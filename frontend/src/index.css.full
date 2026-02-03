@@ -1,0 +1,379 @@
+/* Care Nest Design System - Global Styles */
+
+/* Google Fonts Import */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Lexend:wght@400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* CSS Custom Properties (Design Tokens) */
+:root {
+    /* Colors - Primary */
+    --primary-50: #E6F7F7;
+    --primary-500: #0EA5A5;
+    --primary-600: #0C8C8C;
+    --primary-700: #0A7373;
+
+    /* Colors - Secondary */
+    --secondary-50: #F5F3FF;
+    --secondary-500: #8B7FFF;
+    --secondary-600: #7269DB;
+
+    /* Colors - Text */
+    --text-primary: #1F2937;
+    --text-secondary: #6B7280;
+    --text-tertiary: #9CA3AF;
+    --text-inverse: #FFFFFF;
+
+    /* Colors - Surface */
+    --surface-primary: #FFFFFF;
+    --surface-secondary: #F9FAFB;
+    --surface-tertiary: #F3F4F6;
+
+    /* Colors - Border */
+    --border-light: #F3F4F6;
+    --border-base: #E5E7EB;
+    --border-strong: #D1D5DB;
+
+    /* Spacing */
+    --space-base: 1rem;
+
+    /* Radius */
+    --radius-base: 0.5rem;
+    --radius-md: 0.75rem;
+    --radius-lg: 1rem;
+
+    /* Shadows */
+    --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+    --shadow-base: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+}
+
+/* Base Layer */
+@layer base {
+    body {
+        @apply font-body antialiased text-gray-900;
+        background: #FAFAFA;
+        min-height: 100vh;
+    }
+
+    h1,
+    h2,
+    h3,
+    h4,
+    h5,
+    h6 {
+        @apply font-heading font-semibold;
+    }
+
+    h1 {
+        @apply text-4xl leading-tight;
+    }
+
+    h2 {
+        @apply text-3xl leading-tight;
+    }
+
+    h3 {
+        @apply text-2xl leading-snug;
+    }
+
+    h4 {
+        @apply text-xl leading-snug;
+    }
+
+    h5 {
+        @apply text-lg leading-normal;
+    }
+
+    h6 {
+        @apply text-base leading-normal;
+    }
+
+    /* Focus Styles - Accessibility */
+    *:focus-visible {
+        @apply outline-none ring-3 ring-primary-300 ring-offset-2;
+    }
+
+    /* Selection */
+    ::selection {
+        @apply bg-primary-200 text-primary-900;
+    }
+}
+
+/* Component Layer */
+@layer components {
+
+    /* Button Base */
+    .btn {
+        @apply inline-flex items-center justify-center px-6 py-3 rounded-base font-medium transition-all duration-200;
+        @apply focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-offset-2;
+        @apply disabled:opacity-50 disabled:cursor-not-allowed;
+        min-height: 44px;
+        /* Touch target */
+    }
+
+    .btn-primary {
+        @apply bg-primary-500 text-white shadow-sm;
+        @apply hover:bg-primary-600 hover:shadow-md;
+        @apply active:bg-primary-700 active:scale-98;
+        @apply focus-visible:ring-primary-300;
+    }
+
+    .btn-secondary {
+        @apply bg-secondary-500 text-white shadow-sm;
+        @apply hover:bg-secondary-600 hover:shadow-md;
+        @apply active:bg-secondary-700 active:scale-98;
+        @apply focus-visible:ring-secondary-300;
+    }
+
+    .btn-ghost {
+        @apply bg-transparent border-2 border-primary-500 text-primary-500;
+        @apply hover:bg-primary-50;
+        @apply active:bg-primary-100;
+    }
+
+    .btn-danger {
+        @apply bg-danger text-white shadow-sm;
+        @apply hover:bg-danger-dark hover:shadow-md;
+        @apply active:scale-98;
+    }
+
+    .btn-sm {
+        @apply px-4 py-2 text-sm;
+        min-height: 36px;
+    }
+
+    .btn-lg {
+        @apply px-8 py-4 text-lg;
+        min-height: 52px;
+    }
+
+    .btn-block {
+        @apply w-full;
+    }
+
+    .btn-icon {
+        @apply p-2 rounded-base;
+        @apply hover:bg-gray-100;
+        @apply transition-colors duration-200;
+        min-width: 40px;
+        min-height: 40px;
+    }
+
+    /* Input Base */
+    .form-input {
+        @apply w-full px-4 py-3 rounded-base border border-gray-300;
+        @apply focus:border-primary-500 focus:ring-3 focus:ring-primary-200;
+        @apply transition-all duration-200;
+        @apply disabled:bg-gray-100 disabled:cursor-not-allowed;
+        min-height: 48px;
+        font-size: 16px;
+        /* Prevents iOS zoom */
+    }
+
+    .form-input.error {
+        @apply border-danger;
+        @apply focus:border-danger focus:ring-danger-light;
+    }
+
+    .form-input.success {
+        @apply border-success;
+        @apply focus:border-success focus:ring-success-light;
+    }
+
+    .form-textarea {
+        @apply form-input;
+        min-height: 150px;
+        resize: vertical;
+        line-height: 1.625;
+    }
+
+    .form-label {
+        @apply block text-sm font-medium text-gray-700 mb-2;
+    }
+
+    .form-help {
+        @apply text-sm text-gray-500 mt-1;
+    }
+
+    .form-error {
+        @apply text-sm text-danger-dark mt-1 flex items-center gap-1;
+    }
+
+    /* Card */
+    .card {
+        @apply bg-white rounded-md border border-gray-200 shadow-base p-6;
+        @apply transition-shadow duration-200;
+    }
+
+    .card:hover {
+        @apply shadow-md;
+    }
+
+    .card-header {
+        @apply mb-4;
+    }
+
+    .card-title {
+        @apply text-xl font-semibold text-gray-900;
+    }
+
+    .card-body {
+        @apply space-y-4;
+    }
+
+    .card-footer {
+        @apply mt-4 pt-4 border-t border-gray-200;
+    }
+
+    /* Chat Bubbles */
+    .chat-bubble {
+        @apply px-4 py-3 rounded-lg max-w-[70%];
+    }
+
+    .chat-bubble-user {
+        @apply bg-primary-500 text-white rounded-tr-sm ml-auto;
+    }
+
+    .chat-bubble-ai {
+        @apply bg-gray-100 text-gray-900 rounded-tl-sm;
+    }
+
+    .chat-timestamp {
+        @apply text-xs mt-1 block;
+    }
+
+    /* Alert / Banner */
+    .alert {
+        @apply p-4 rounded-base border-l-4;
+    }
+
+    .alert-info {
+        @apply bg-info-light border-info;
+    }
+
+    .alert-success {
+        @apply bg-success-light border-success;
+    }
+
+    .alert-warning {
+        @apply bg-warning-light border-warning;
+    }
+
+    .alert-danger {
+        @apply bg-danger-light border-danger;
+    }
+
+    /* Badge */
+    .badge {
+        @apply inline-flex items-center px-3 py-1 rounded-full text-sm font-medium;
+    }
+
+    .badge-primary {
+        @apply bg-primary-100 text-primary-700;
+    }
+
+    .badge-success {
+        @apply bg-success-light text-success-dark;
+    }
+
+    /* Glass Effect */
+    .glass {
+        @apply bg-white/70 backdrop-blur-xl border border-white/20 shadow-xl;
+    }
+}
+
+/* Utility Layer */
+@layer utilities {
+
+    /* Safe area padding for mobile */
+    .safe-top {
+        padding-top: env(safe-area-inset-top);
+    }
+
+    .safe-bottom {
+        padding-bottom: env(safe-area-inset-bottom);
+    }
+
+    /* Accessibility */
+    .sr-only {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        padding: 0;
+        margin: -1px;
+        overflow: hidden;
+        clip: rect(0, 0, 0, 0);
+        white-space: nowrap;
+        border-width: 0;
+    }
+
+    /* Text utilities */
+    .text-balance {
+        text-wrap: balance;
+    }
+}
+
+/* Premium Scrollbar */
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+    @apply bg-gray-300 rounded-full;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    @apply bg-gray-400;
+}
+
+/* Reduced Motion Support - Accessibility */
+@media (prefers-reduced-motion: reduce) {
+
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
+}
+
+/* Mobile Responsive Typography */
+@media (max-width: 768px) {
+    h1 {
+        @apply text-3xl;
+    }
+
+    h2 {
+        @apply text-2xl;
+    }
+
+    h3 {
+        @apply text-xl;
+    }
+}
+
+/* Dark Mode Support (Future) */
+.dark {
+    color-scheme: dark;
+}
+
+.dark body {
+    @apply bg-gray-900 text-gray-100;
+}
+
+.dark .card {
+    @apply bg-gray-800 border-gray-700;
+}
+
+.dark .form-input {
+    @apply bg-gray-800 border-gray-700 text-gray-100;
+}
