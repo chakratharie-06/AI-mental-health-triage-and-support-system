@@ -73,29 +73,29 @@ function LandingPage() {
             icon: Heart,
             title: 'Empathetic Support',
             description: 'AI-powered conversations that listen without judgment, available 24/7 in your language.',
-            color: 'from-pink-500 to-rose-600'
+            color: 'from-secondary-500 to-secondary-600'
         },
         {
             icon: Shield,
             title: 'Privacy First',
             description: 'Your conversations are encrypted and private. Anonymous access available.',
-            color: 'from-blue-500 to-cyan-600'
+            color: 'from-primary-500 to-primary-600'
         },
         {
             icon: Users,
             title: 'Culturally Aware',
             description: 'Designed for Indian users with support for 8 languages and cultural understanding.',
-            color: 'from-purple-500 to-indigo-600'
+            color: 'from-accent-focus to-secondary-500'
         }
     ];
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-teal-50 via-blue-50 to-cyan-50 relative overflow-hidden">
+        <div className="min-h-screen bg-gradient-to-br from-primary-50 via-surface-primary to-primary-100 relative overflow-hidden">
             {/* Animated background blobs */}
             <div className="absolute inset-0 overflow-hidden pointer-events-none">
-                <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-teal-300/20 rounded-full blur-3xl animate-blob"></div>
-                <div className="absolute top-1/3 right-1/4 w-96 h-96 bg-blue-300/20 rounded-full blur-3xl animate-blob animation-delay-2000"></div>
-                <div className="absolute bottom-1/4 left-1/3 w-96 h-96 bg-cyan-300/20 rounded-full blur-3xl animate-blob animation-delay-4000"></div>
+                <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-primary-200/20 rounded-full blur-3xl animate-blob"></div>
+                <div className="absolute top-1/3 right-1/4 w-96 h-96 bg-secondary-200/20 rounded-full blur-3xl animate-blob animation-delay-2000"></div>
+                <div className="absolute bottom-1/4 left-1/3 w-96 h-96 bg-primary-300/20 rounded-full blur-3xl animate-blob animation-delay-4000"></div>
             </div>
 
             <div className="relative z-10">
@@ -103,7 +103,7 @@ function LandingPage() {
                 <header className="px-6 py-6">
                     <div className="max-w-7xl mx-auto flex items-center justify-between">
                         <div className="flex items-center gap-3">
-                            <div className="w-12 h-12 bg-gradient-to-br from-teal-600 to-blue-600 rounded-2xl flex items-center justify-center">
+                            <div className="w-12 h-12 bg-gradient-to-br from-primary-600 to-primary-700 rounded-2xl flex items-center justify-center">
                                 <Sparkles className="w-7 h-7 text-white" />
                             </div>
                             <h1 className="text-2xl font-bold text-gray-800">Care Nest</h1>
@@ -111,13 +111,13 @@ function LandingPage() {
                         <div className="flex items-center gap-3">
                             <button
                                 onClick={() => navigate('/signin')}
-                                className="px-6 py-2 text-teal-700 font-medium hover:bg-teal-50 rounded-xl transition-colors"
+                                className="px-6 py-2 text-primary-700 font-medium hover:bg-primary-50 rounded-xl transition-colors"
                             >
                                 Sign In
                             </button>
                             <button
                                 onClick={() => navigate('/signup')}
-                                className="px-6 py-2 bg-gradient-to-r from-teal-600 to-blue-600 text-white font-semibold rounded-xl hover:from-teal-700 hover:to-blue-700 transition-all shadow-lg"
+                                className="px-6 py-2 bg-gradient-to-r from-primary-600 to-primary-700 text-white font-semibold rounded-xl hover:from-primary-700 hover:to-primary-800 transition-all shadow-lg"
                             >
                                 Get Started
                             </button>
@@ -135,7 +135,7 @@ function LandingPage() {
                         >
                             <h2 className="text-5xl md:text-6xl font-bold text-gray-900 mb-6 leading-tight">
                                 Your Safe Space for
-                                <span className="block bg-gradient-to-r from-teal-600 to-blue-600 bg-clip-text text-transparent">
+                                <span className="block bg-gradient-to-r from-primary-600 to-secondary-600 bg-clip-text text-transparent">
                                     Mental Wellness
                                 </span>
                             </h2>
@@ -146,7 +146,7 @@ function LandingPage() {
                             <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
                                 <button
                                     onClick={() => navigate('/signup')}
-                                    className="px-8 py-4 bg-gradient-to-r from-teal-600 to-blue-600 text-white font-bold rounded-2xl hover:from-teal-700 hover:to-blue-700 transition-all shadow-xl text-lg"
+                                    className="px-8 py-4 bg-gradient-to-r from-primary-600 to-secondary-600 text-white font-bold rounded-2xl hover:from-primary-700 hover:to-secondary-700 transition-all shadow-xl text-lg"
                                 >
                                     Start Your Journey
                                 </button>
@@ -190,25 +190,25 @@ function LandingPage() {
                 {/* Safety Section */}
                 <section className="px-6 py-16">
                     <div className="max-w-4xl mx-auto">
-                        <div className="bg-teal-50 rounded-2xl p-8 border border-teal-200">
-                            <h3 className="text-2xl font-bold text-teal-900 mb-4 text-center">
+                        <div className="bg-primary-50 rounded-2xl p-8 border border-primary-200">
+                            <h3 className="text-2xl font-bold text-primary-900 mb-4 text-center">
                                 🔒 Your Safety & Privacy Matter
                             </h3>
-                            <div className="space-y-3 text-teal-800">
+                            <div className="space-y-3 text-primary-800">
                                 <p className="flex items-start gap-2">
-                                    <span className="text-teal-600 font-bold">•</span>
+                                    <span className="text-primary-600 font-bold">•</span>
                                     <span>All conversations are encrypted and private</span>
                                 </p>
                                 <p className="flex items-start gap-2">
-                                    <span className="text-teal-600 font-bold">•</span>
+                                    <span className="text-primary-600 font-bold">•</span>
                                     <span>Anonymous access available - no personal details required</span>
                                 </p>
                                 <p className="flex items-start gap-2">
-                                    <span className="text-teal-600 font-bold">•</span>
+                                    <span className="text-primary-600 font-bold">•</span>
                                     <span>Crisis detection with immediate helpline access (Tele MANAS 14416)</span>
                                 </p>
                                 <p className="flex items-start gap-2">
-                                    <span className="text-teal-600 font-bold">•</span>
+                                    <span className="text-primary-600 font-bold">•</span>
                                     <span>AI assistant, not a replacement for professional therapy</span>
                                 </p>
                             </div>
@@ -227,7 +227,7 @@ function LandingPage() {
                         </p>
                         <button
                             onClick={() => navigate('/signup')}
-                            className="px-10 py-5 bg-gradient-to-r from-teal-600 to-blue-600 text-white font-bold rounded-2xl hover:from-teal-700 hover:to-blue-700 transition-all shadow-2xl text-xl"
+                            className="px-10 py-5 bg-gradient-to-r from-primary-600 to-secondary-600 text-white font-bold rounded-2xl hover:from-primary-700 hover:to-secondary-700 transition-all shadow-2xl text-xl"
                         >
                             Get Started Free
                         </button>

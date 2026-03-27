@@ -1,253 +1,296 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
-import axios from 'axios';
-import { motion } from 'framer-motion';
-import { ArrowLeft, ClipboardList, AlertCircle, CheckCircle2, Info } from 'lucide-react';
+import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { AlertCircle, CheckCircle2, ArrowLeft, ClipboardList, ChevronRight, ChevronLeft } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 
-/**
- * AssessmentPage - Standalone Mental Health Screening Interface
- * 
- * A professional, ethical PHQ-9 depression screening tool.
- * Provides results with clear disclaimers and next steps.
- */
-function AssessmentPage() {
-    const navigate = useNavigate();
-    const { token } = useAuth();
+const questions = [
+  {
+    id: "mood",
+    question: "How have you been feeling emotionally over the past 2 weeks?",
+    options: [
+      { value: "0", label: "Good - feeling positive most of the time", score: 0 },
+      { value: "1", label: "Okay - some ups and downs, but manageable", score: 1 },
+      { value: "2", label: "Not great - frequently feeling down or anxious", score: 2 },
+      { value: "3", label: "Very difficult - constant sadness, hopelessness, or anxiety", score: 3 },
+    ],
+  },
+  {
+    id: "sleep",
+    question: "How has your sleep been?",
+    options: [
+      { value: "0", label: "Normal - sleeping well most nights", score: 0 },
+      { value: "1", label: "Slightly affected - occasional difficulty", score: 1 },
+      { value: "2", label: "Quite disturbed - regular insomnia or oversleeping", score: 2 },
+      { value: "3", label: "Severely affected - barely sleeping or sleeping too much", score: 3 },
+    ],
+  },
+  {
+    id: "social",
+    question: "How do you feel about interacting with family and friends?",
+    options: [
+      { value: "0", label: "Normal - enjoying social connections", score: 0 },
+      { value: "1", label: "Slightly withdrawn - but still managing", score: 1 },
+      { value: "2", label: "Very withdrawn - avoiding most interactions", score: 2 },
+      { value: "3", label: "Completely isolated - can't face anyone", score: 3 },
+    ],
+  },
+  {
+    id: "functioning",
+    question: "How are you managing daily activities (work, studies, household tasks)?",
+    options: [
+      { value: "0", label: "Managing well - keeping up with responsibilities", score: 0 },
+      { value: "1", label: "Struggling a bit - but getting things done", score: 1 },
+      { value: "2", label: "Very difficult - falling behind significantly", score: 2 },
+      { value: "3", label: "Unable to function - can't complete basic tasks", score: 3 },
+    ],
+  },
+  {
+    id: "thoughts",
+    question: "Have you experienced thoughts of harming yourself or that life isn't worth living?",
+    options: [
+      { value: "0", label: "No, not at all", score: 0 },
+      { value: "1", label: "Rare fleeting thoughts, but no intent", score: 1 },
+      { value: "2", label: "Sometimes - these thoughts worry me", score: 2 },
+      { value: "3", label: "Frequently - or I have a plan", score: 3 },
+    ],
+  },
+  {
+    id: "support",
+    question: "Do you have people you can talk to about your feelings?",
+    options: [
+      { value: "0", label: "Yes - I have good support from family/friends", score: 0 },
+      { value: "1", label: "Somewhat - but I don't feel comfortable sharing", score: 1 },
+      { value: "2", label: "Very limited - stigma prevents me from opening up", score: 2 },
+      { value: "3", label: "No one - I feel completely alone", score: 3 },
+    ],
+  },
+];
 
-    const [currentQuestion, setCurrentQuestion] = useState(0);
-    const [answers, setAnswers] = useState({});
-    const [result, setResult] = useState(null);
-    const [loading, setLoading] = useState(false);
+export default function AssessmentPage() {
+  const navigate = useNavigate();
+  const [currentQuestion, setCurrentQuestion] = useState(0);
+  const [answers, setAnswers] = useState({});
+  const [showEmergency, setShowEmergency] = useState(false);
 
-    // PHQ-9 questions
-    const questions = [
-        "Little interest or pleasure in doing things",
-        "Feeling down, depressed, or hopeless",
-        "Trouble falling or staying asleep, or sleeping too much",
-        "Feeling tired or having little energy",
-        "Poor appetite or overeating",
-        "Feeling bad about yourself - or that you are a failure or have let yourself or your family down",
-        "Trouble concentrating on things, such as reading the newspaper or watching television",
-        "Moving or speaking so slowly that other people could have noticed. Or the opposite - being so fidgety or restless that you have been moving around a lot more than usual",
-        "Thoughts that you would be better off dead, or of hurting yourself in some way"
-    ];
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }, [currentQuestion]);
 
-    const options = [
-        { value: 0, label: "Not at all" },
-        { value: 1, label: "Several days" },
-        { value: 2, label: "More than half the days" },
-        { value: 3, label: "Nearly every day" }
-    ];
+  const progress = ((currentQuestion + 1) / questions.length) * 100;
+  const currentQ = questions[currentQuestion];
+  const hasAnswer = answers[currentQ.id] !== undefined;
 
-    const handleAnswer = (value) => {
-        setAnswers({ ...answers, [currentQuestion]: value });
+  const handleAnswer = (value) => {
+    const newAnswers = { ...answers, [currentQ.id]: value };
+    setAnswers(newAnswers);
 
+    if (currentQ.id === "thoughts" && parseInt(value, 10) >= 2) {
+      setShowEmergency(true);
+    }
+    
+    // Auto advance after a brief delay for a smoother experience
+    setTimeout(() => {
         if (currentQuestion < questions.length - 1) {
             setCurrentQuestion(currentQuestion + 1);
-        } else {
-            submitAssessment({ ...answers, [currentQuestion]: value });
         }
-    };
+    }, 450);
+  };
 
-    const submitAssessment = async (finalAnswers) => {
-        setLoading(true);
+  const handleNext = () => {
+    if (currentQuestion < questions.length - 1) {
+      setCurrentQuestion(currentQuestion + 1);
+    } else {
+      const totalScore = Object.entries(answers).reduce((sum, [questionId, value]) => {
+        const question = questions.find((q) => q.id === questionId);
+        const option = question?.options.find((o) => o.value === value);
+        return sum + (option?.score || 0);
+      }, 0);
 
-        try {
-            const score = Object.values(finalAnswers).reduce((sum, val) => sum + val, 0);
+      localStorage.setItem("assessmentScore", totalScore.toString());
+      localStorage.setItem("assessmentAnswers", JSON.stringify(answers));
+      localStorage.setItem("assessmentDate", new Date().toISOString());
+      navigate("/triage-results");
+    }
+  };
 
-            let severity, recommendation;
-            if (score <= 4) {
-                severity = "Minimal";
-                recommendation = "Your responses suggest minimal depression symptoms. Continue practicing self-care.";
-            } else if (score <= 9) {
-                severity = "Mild";
-                recommendation = "Your responses suggest mild depression. Consider speaking with a mental health professional.";
-            } else if (score <= 14) {
-                severity = "Moderate";
-                recommendation = "Your responses suggest moderate depression. We recommend consulting a mental health professional.";
-            } else if (score <= 19) {
-                severity = "Moderately Severe";
-                recommendation = "Your responses suggest moderately severe depression. Please seek professional help soon.";
-            } else {
-                severity = "Severe";
-                recommendation = "Your responses suggest severe depression. Please contact a mental health professional or crisis helpline immediately.";
-            }
+  const handlePrevious = () => {
+    if (currentQuestion > 0) {
+      setCurrentQuestion(currentQuestion - 1);
+    }
+  };
 
-            setResult({ score, severity, recommendation });
-
-            // Optionally save to backend
-            await axios.post(
-                '/api/assessment',
-                { score, severity },
-                { headers: { Authorization: `Bearer ${token}` } }
-            ).catch(() => { });
-
-        } catch (error) {
-            console.error('Assessment error:', error);
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    const restart = () => {
-        setCurrentQuestion(0);
-        setAnswers({});
-        setResult(null);
-    };
-
-    return (
-        <div className="min-h-screen bg-gradient-to-br from-sky-50 via-white to-indigo-50">
-            {/* Header */}
-            <header className="bg-white/80 backdrop-blur-lg border-b border-gray-200 px-4 py-4 sticky top-0 z-10">
-                <div className="max-w-4xl mx-auto flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                        <button
-                            onClick={() => navigate('/chat')}
-                            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-                        >
-                            <ArrowLeft className="w-5 h-5 text-gray-600" />
-                        </button>
-                        <div className="w-10 h-10 bg-gradient-to-br from-sky-500 to-indigo-600 rounded-xl flex items-center justify-center">
-                            <ClipboardList className="w-6 h-6 text-white" />
-                        </div>
-                        <div>
-                            <h1 className="font-bold text-gray-800">Mental Health Assessment</h1>
-                            <p className="text-xs text-gray-600">PHQ-9 Depression Screening</p>
-                        </div>
-                    </div>
-                </div>
-            </header>
-
-            <div className="max-w-4xl mx-auto px-4 py-8">
-                {!result ? (
-                    <>
-                        {/* Introduction */}
-                        {currentQuestion === 0 && Object.keys(answers).length === 0 && (
-                            <div className="mb-8 p-6 bg-sky-50 rounded-xl border border-sky-200">
-                                <div className="flex items-start gap-3">
-                                    <Info className="w-6 h-6 text-sky-600 flex-shrink-0 mt-0.5" />
-                                    <div className="text-sm text-sky-800">
-                                        <p className="font-medium mb-2">About this assessment:</p>
-                                        <ul className="space-y-1 text-sky-700">
-                                            <li>• This is a standardized screening tool (PHQ-9)</li>
-                                            <li>• It takes about 2-3 minutes to complete</li>
-                                            <li>• Your responses are confidential</li>
-                                            <li>• This is NOT a diagnosis - only a licensed professional can diagnose</li>
-                                            <li>• Results will help you understand if you should seek professional support</li>
-                                        </ul>
-                                    </div>
-                                </div>
-                            </div>
-                        )}
-
-                        {/* Progress */}
-                        <div className="mb-8">
-                            <div className="flex items-center justify-between mb-2">
-                                <p className="text-sm text-gray-600">
-                                    Question {currentQuestion + 1} of {questions.length}
-                                </p>
-                                <p className="text-sm text-gray-600">
-                                    {Math.round(((currentQuestion + 1) / questions.length) * 100)}%
-                                </p>
-                            </div>
-                            <div className="w-full bg-gray-200 rounded-full h-2">
-                                <motion.div
-                                    initial={{ width: 0 }}
-                                    animate={{ width: `${((currentQuestion + 1) / questions.length) * 100}%` }}
-                                    className="bg-gradient-to-r from-sky-600 to-indigo-600 h-2 rounded-full"
-                                ></motion.div>
-                            </div>
-                        </div>
-
-                        {/* Question */}
-                        <div className="bg-white rounded-2xl p-8 border border-gray-200 shadow-lg mb-6">
-                            <p className="text-lg text-gray-800 mb-2">
-                                Over the last 2 weeks, how often have you been bothered by:
-                            </p>
-                            <h2 className="text-2xl font-bold text-gray-900 mb-8">
-                                {questions[currentQuestion]}
-                            </h2>
-
-                            <div className="space-y-3">
-                                {options.map((option) => (
-                                    <motion.button
-                                        key={option.value}
-                                        whileHover={{ scale: 1.02 }}
-                                        whileTap={{ scale: 0.98 }}
-                                        onClick={() => handleAnswer(option.value)}
-                                        className="w-full p-4 bg-gray-50 border-2 border-gray-200 rounded-xl hover:border-sky-500 hover:bg-sky-50 transition-all text-left font-medium text-gray-700"
-                                    >
-                                        {option.label}
-                                    </motion.button>
-                                ))}
-                            </div>
-                        </div>
-
-                        {/* Back button */}
-                        {currentQuestion > 0 && (
-                            <button
-                                onClick={() => setCurrentQuestion(currentQuestion - 1)}
-                                className="text-gray-600 hover:text-gray-800 font-medium"
-                            >
-                                ← Previous Question
-                            </button>
-                        )}
-                    </>
-                ) : (
-                    /* Results */
-                    <div>
-                        <div className="bg-white rounded-2xl p-8 border border-gray-200 shadow-lg mb-6">
-                            <div className="text-center mb-6">
-                                <div className={`w-20 h-20 mx-auto mb-4 rounded-full flex items-center justify-center ${result.score <= 9 ? 'bg-green-100' : result.score <= 14 ? 'bg-yellow-100' : 'bg-red-100'
-                                    }`}>
-                                    {result.score <= 9 ? (
-                                        <CheckCircle2 className="w-10 h-10 text-green-600" />
-                                    ) : (
-                                        <AlertCircle className="w-10 h-10 text-red-600" />
-                                    )}
-                                </div>
-                                <h2 className="text-3xl font-bold text-gray-800 mb-2">Assessment Complete</h2>
-                                <p className="text-gray-600">Your PHQ-9 Score: <span className="font-bold text-2xl">{result.score}</span> / 27</p>
-                            </div>
-
-                            <div className={`p-6 rounded-xl mb-6 ${result.score <= 9 ? 'bg-green-50 border border-green-200' :
-                                    result.score <= 14 ? 'bg-yellow-50 border border-yellow-200' :
-                                        'bg-red-50 border border-red-200'
-                                }`}>
-                                <p className="font-semibold text-gray-800 mb-2">Severity: {result.severity}</p>
-                                <p className="text-gray-700">{result.recommendation}</p>
-                            </div>
-
-                            <div className="p-6 bg-blue-50 rounded-xl border border-blue-200 mb-6">
-                                <p className="text-sm text-blue-800 font-medium mb-2">⚠️ Important Disclaimer</p>
-                                <p className="text-sm text-blue-700 leading-relaxed">
-                                    This assessment is a screening tool, not a diagnosis. Only a qualified mental health professional
-                                    can provide an accurate diagnosis and treatment plan. If you're experiencing distress, please
-                                    reach out to a professional or crisis helpline.
-                                </p>
-                            </div>
-
-                            <div className="flex gap-4">
-                                <button
-                                    onClick={() => navigate('/resources')}
-                                    className="flex-1 py-3 bg-gradient-to-r from-sky-600 to-indigo-600 text-white font-semibold rounded-xl hover:from-sky-700 hover:to-indigo-700 transition-all"
-                                >
-                                    Find Resources
-                                </button>
-                                <button
-                                    onClick={restart}
-                                    className="flex-1 py-3 bg-gray-100 text-gray-700 font-medium rounded-xl hover:bg-gray-200 transition-all"
-                                >
-                                    Retake Assessment
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                )}
-            </div>
+  return (
+    <div className="min-h-screen bg-surface-primary font-sans flex flex-col">
+      {/* Top Navigation Bar */}
+      <header className="bg-white/80 backdrop-blur-md border-b border-gray-200 sticky top-0 z-20">
+        <div className="max-w-4xl mx-auto px-6 py-4 flex items-center gap-4">
+          <button
+            onClick={() => navigate('/dashboard')}
+            className="p-2 -ml-2 text-gray-500 hover:text-gray-900 hover:bg-gray-100 rounded-full transition-colors"
+            aria-label="Back to Dashboard"
+          >
+            <ArrowLeft className="w-5 h-5" />
+          </button>
+          <div className="w-10 h-10 bg-gradient-to-br from-primary-500 to-primary-600 rounded-xl flex items-center justify-center shadow-sm">
+            <ClipboardList className="w-5 h-5 text-white" />
+          </div>
+          <div>
+            <h1 className="text-lg font-bold text-gray-900 leading-tight">Mental Wellness Assessment</h1>
+            <p className="text-xs text-gray-500 font-medium">Confidential & Secure Feedback</p>
+          </div>
         </div>
-    );
-}
+      </header>
 
-export default AssessmentPage;
+      {/* Main Content Area */}
+      <main className="flex-1 flex flex-col items-center p-6 sm:p-8">
+        <div className="w-full max-w-2xl space-y-8">
+          
+          {/* Emergency Alert Banner */}
+          <AnimatePresence>
+            {showEmergency && (
+              <motion.div 
+                initial={{ opacity: 0, y: -20, height: 0 }}
+                animate={{ opacity: 1, y: 0, height: 'auto' }}
+                className="overflow-hidden"
+              >
+                <div className="flex flex-col sm:flex-row items-start gap-4 p-5 border border-danger-base bg-danger-light rounded-2xl shadow-sm">
+                  <AlertCircle className="w-8 h-8 text-danger-dark flex-shrink-0 mt-1" />
+                  <div className="text-danger-dark flex-1">
+                    <p className="font-bold text-lg mb-1">Immediate Help Available</p>
+                    <p className="text-sm mb-4 leading-relaxed font-medium">
+                      If you're in crisis, please contact these 24/7 helplines right away: <br className="hidden sm:block" />
+                      <span className="font-bold underline text-danger-dark">NIMHANS: 080-46110007</span> | <span className="font-bold underline text-danger-dark">Vandrevala Foundation: 1860-2662-345</span>
+                    </p>
+                    <button
+                      className="px-5 py-2.5 bg-danger-base hover:bg-danger-dark text-white rounded-xl font-semibold transition-all shadow-md active:scale-95 flex items-center gap-2"
+                      onClick={() => window.open('/resources', '_self')}
+                    >
+                      🆘 Get Emergency Help Now
+                    </button>
+                  </div>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {/* Progress Indicator */}
+          <div className="space-y-3">
+            <div className="flex justify-between items-end text-sm">
+              <span className="font-semibold text-gray-700 tracking-wide uppercase text-xs">
+                Question {currentQuestion + 1} of {questions.length}
+              </span>
+              <span className="font-medium text-primary-600 text-xs">
+                {Math.round(progress)}% Complete
+              </span>
+            </div>
+            <div className="w-full bg-gray-100/80 rounded-full h-2 overflow-hidden ring-1 ring-inset ring-gray-200">
+              <motion.div
+                initial={{ width: 0 }}
+                animate={{ width: `${progress}%` }}
+                transition={{ duration: 0.5, ease: "easeOut" }}
+                className="bg-gradient-to-r from-primary-400 to-primary-600 h-2 rounded-full shadow-[0_0_10px_rgba(38,181,186,0.5)]"
+              />
+            </div>
+          </div>
+
+          {/* Question Interface */}
+          <div className="bg-white rounded-3xl shadow-xl shadow-gray-200/50 border border-gray-100 overflow-hidden relative">
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={currentQuestion}
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+                transition={{ duration: 0.3, ease: "easeInOut" }}
+                className="w-full"
+              >
+                <div className="px-8 pt-10 pb-6">
+                  <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 leading-tight mb-2">
+                    {currentQ.question}
+                  </h2>
+                  <p className="text-gray-500 font-medium">Select the best matching option below.</p>
+                </div>
+                
+                <div className="px-8 pb-10 space-y-3" role="radiogroup">
+                  {currentQ.options.map((option, idx) => {
+                    const isSelected = answers[currentQ.id] === option.value;
+                    return (
+                      <label
+                        key={option.value}
+                        className={`
+                          block relative w-full p-5 rounded-2xl border-2 transition-all duration-200 cursor-pointer overflow-hidden
+                          ${isSelected 
+                            ? "border-primary-500 bg-primary-50/50 shadow-sm" 
+                            : "border-gray-100 hover:border-gray-300 hover:bg-gray-50/50 bg-white"
+                          }
+                        `}
+                      >
+                        <input
+                          type="radio"
+                          name={currentQ.id}
+                          value={option.value}
+                          checked={isSelected}
+                          onChange={() => handleAnswer(option.value)}
+                          className="sr-only"
+                        />
+                        <div className="flex items-center gap-4">
+                          <div className={`
+                            flex-shrink-0 w-6 h-6 rounded-full border-2 flex items-center justify-center transition-colors
+                            ${isSelected ? "border-primary-500" : "border-gray-300"}
+                          `}>
+                            {isSelected && <div className="w-3 h-3 bg-primary-500 rounded-full" />}
+                          </div>
+                          
+                          <div className={`flex-1 font-medium text-base sm:text-lg transition-colors ${isSelected ? "text-primary-900" : "text-gray-700"}`}>
+                            {option.label}
+                          </div>
+                        </div>
+                      </label>
+                    );
+                  })}
+                </div>
+              </motion.div>
+            </AnimatePresence>
+          </div>
+
+          {/* Action Buttons */}
+          <div className="flex items-center justify-between pt-4">
+            <button
+              onClick={handlePrevious}
+              disabled={currentQuestion === 0}
+              className={`flex items-center gap-2 px-6 py-3.5 rounded-2xl font-semibold transition-all duration-200 ${
+                currentQuestion === 0
+                  ? "text-gray-300 cursor-not-allowed"
+                  : "text-gray-600 hover:bg-gray-100 active:scale-95"
+              }`}
+            >
+              <ChevronLeft className="w-5 h-5" />
+              <span>Back</span>
+            </button>
+            <button
+              onClick={handleNext}
+              disabled={!hasAnswer}
+              className={`flex items-center gap-2 px-8 py-3.5 rounded-2xl font-bold transition-all duration-200 shadow-lg ${
+                !hasAnswer
+                  ? "bg-gray-100 text-gray-400 cursor-not-allowed shadow-none"
+                  : "bg-gradient-to-r from-primary-600 to-primary-500 text-white hover:shadow-xl hover:-translate-y-0.5 active:translate-y-0 active:scale-95"
+              }`}
+            >
+              <span>{currentQuestion === questions.length - 1 ? "Submit Assessment" : "Continue"}</span>
+              <ChevronRight className="w-5 h-5" />
+            </button>
+          </div>
+
+          {/* Privacy Footnote */}
+          <div className="pt-8 pb-4 text-center">
+             <div className="inline-flex items-center gap-2 px-4 py-2 bg-info-light/50 border border-info-base/50 rounded-full text-xs font-semibold text-info-dark">
+                <AlertCircle className="w-4 h-4" />
+                <span>Your privacy matters. Responses are 100% confidential.</span>
+             </div>
+          </div>
+          
+        </div>
+      </main>
+    </div>
+  );
+}

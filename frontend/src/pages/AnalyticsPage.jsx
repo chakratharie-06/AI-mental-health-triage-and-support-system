@@ -40,10 +40,10 @@ function AnalyticsPage() {
         totalSessions: 12,
         averageMood: 'Calm',
         moodDistribution: [
-            { mood: 'Happy', count: 3, color: 'bg-green-500' },
-            { mood: 'Calm', count: 5, color: 'bg-blue-500' },
+            { mood: 'Happy', count: 3, color: 'bg-success-base' },
+            { mood: 'Calm', count: 5, color: 'bg-primary-500' },
             { mood: 'Okay', count: 2, color: 'bg-gray-500' },
-            { mood: 'Sad', count: 2, color: 'bg-purple-500' }
+            { mood: 'Sad', count: 2, color: 'bg-secondary-500' }
         ],
         weeklyTrend: [
             { day: 'Mon', mood: 7 },
@@ -97,7 +97,7 @@ function AnalyticsPage() {
                                 className="bg-white rounded-2xl p-6 border border-gray-200 shadow-lg"
                             >
                                 <div className="flex items-center gap-3 mb-3">
-                                    <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-cyan-600 rounded-xl flex items-center justify-center">
+                                    <div className="w-12 h-12 bg-gradient-to-br from-primary-500 to-primary-600 rounded-xl flex items-center justify-center">
                                         <Calendar className="w-6 h-6 text-white" />
                                     </div>
                                     <div>
@@ -131,7 +131,7 @@ function AnalyticsPage() {
                                 className="bg-white rounded-2xl p-6 border border-gray-200 shadow-lg"
                             >
                                 <div className="flex items-center gap-3 mb-3">
-                                    <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-pink-600 rounded-xl flex items-center justify-center">
+                                    <div className="w-12 h-12 bg-gradient-to-br from-secondary-500 to-secondary-600 rounded-xl flex items-center justify-center">
                                         <TrendingUp className="w-6 h-6 text-white" />
                                     </div>
                                     <div>

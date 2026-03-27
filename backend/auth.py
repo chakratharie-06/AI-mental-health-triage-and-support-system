@@ -5,6 +5,7 @@ from datetime import datetime, timedelta
 import os
 
 SECRET_KEY = os.getenv('SECRET_KEY', 'soul-sync-secret-key-change-in-production')
+LEGACY_KEY = 'soul-sync-secret-key-change-in-production'
 
 def generate_token(user_id):
     """Generate JWT token for user"""
@@ -19,9 +20,14 @@ def decode_token(token):
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=['HS256'])
         return payload['user_id']
+    except (jwt.InvalidTokenError, jwt.DecodeError):
+        # Try legacy key if current key fails
+        try:
+            payload = jwt.decode(token, LEGACY_KEY, algorithms=['HS256'])
+            return payload['user_id']
+        except Exception:
+            return None
     except jwt.ExpiredSignatureError:
-        return None
-    except jwt.InvalidTokenError:
         return None
 
 def token_required(f):

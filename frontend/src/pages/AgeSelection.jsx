@@ -52,11 +52,11 @@ function AgeSelection() {
     };
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-teal-50 via-white to-cyan-50 flex items-center justify-center p-4">
+        <div className="min-h-screen bg-gradient-to-br from-primary-50 via-white to-primary-50 flex items-center justify-center p-4">
             {/* Background decoration */}
             <div className="absolute inset-0 overflow-hidden pointer-events-none">
-                <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-teal-200 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-blob"></div>
-                <div className="absolute top-1/2 right-1/4 w-96 h-96 bg-cyan-200 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-blob animation-delay-2000"></div>
+                <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-primary-200 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-blob"></div>
+                <div className="absolute top-1/2 right-1/4 w-96 h-96 bg-primary-200 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-blob animation-delay-2000"></div>
             </div>
 
             {/* Main card */}
@@ -75,7 +75,7 @@ function AgeSelection() {
                             transition={{ delay: 0.2, type: "spring", stiffness: 200 }}
                             className="inline-block mb-6"
                         >
-                            <div className="w-20 h-20 bg-gradient-to-br from-teal-500 to-cyan-600 rounded-2xl flex items-center justify-center mx-auto">
+                            <div className="w-20 h-20 bg-gradient-to-br from-primary-500 to-primary-600 rounded-2xl flex items-center justify-center mx-auto">
                                 <Users className="w-10 h-10 text-white" />
                             </div>
                         </motion.div>
@@ -88,11 +88,11 @@ function AgeSelection() {
                     </div>
 
                     {/* Info banner */}
-                    <div className="mb-8 p-4 bg-teal-50 rounded-xl border border-teal-100 flex items-start gap-3">
-                        <Info className="w-5 h-5 text-teal-600 flex-shrink-0 mt-0.5" />
-                        <div className="text-sm text-teal-800">
+                    <div className="mb-8 p-4 bg-primary-50 rounded-xl border border-primary-100 flex items-start gap-3">
+                        <Info className="w-5 h-5 text-primary-600 flex-shrink-0 mt-0.5" />
+                        <div className="text-sm text-primary-800">
                             <p className="font-medium mb-1">This is completely optional</p>
-                            <p className="text-teal-700">
+                            <p className="text-primary-700">
                                 You can skip this step or change it later. Your privacy is our priority.
                             </p>
                         </div>
@@ -108,8 +108,8 @@ function AgeSelection() {
                                 transition={{ delay: 0.1 * index }}
                                 onClick={() => setSelectedAge(group.value)}
                                 className={`p-6 rounded-2xl border-2 transition-all ${selectedAge === group.value
-                                    ? 'border-teal-500 bg-teal-50 shadow-lg scale-105'
-                                    : 'border-gray-200 bg-white hover:border-teal-300 hover:shadow-md'
+                                    ? 'border-primary-500 bg-primary-50 shadow-lg scale-105'
+                                    : 'border-gray-200 bg-white hover:border-primary-300 hover:shadow-md'
                                     }`}
                             >
                                 <div className="text-4xl mb-3">{group.emoji}</div>
@@ -131,7 +131,7 @@ function AgeSelection() {
                         <button
                             onClick={handleContinue}
                             disabled={!selectedAge || loading}
-                            className="flex-1 py-3 px-6 bg-gradient-to-r from-teal-600 to-cyan-600 text-white font-semibold rounded-xl hover:from-teal-700 hover:to-cyan-700 focus:ring-4 focus:ring-teal-200 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-xl flex items-center justify-center gap-2"
+                            className="flex-1 py-3 px-6 bg-gradient-to-r from-primary-600 to-primary-600 text-white font-semibold rounded-xl hover:from-primary-700 hover:to-primary-700 focus:ring-4 focus:ring-primary-200 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-xl flex items-center justify-center gap-2"
                         >
                             {loading ? (
                                 <>

@@ -38,9 +38,9 @@ function AdminDashboard() {
         totalSessions: 5632,
         averageSessionLength: "12 min",
         distressDistribution: [
-            { level: "Low", count: 3421, color: "bg-green-500" },
-            { level: "Moderate", count: 1876, color: "bg-yellow-500" },
-            { level: "High", count: 335, color: "bg-red-500" }
+            { level: "Low", count: 3421, color: "bg-success-base" },
+            { level: "Moderate", count: 1876, color: "bg-warning-base" },
+            { level: "High", count: 335, color: "bg-danger-base" }
         ],
         topMoods: [
             { mood: "Calm", count: 2145 },
@@ -76,11 +76,11 @@ function AdminDashboard() {
 
             <div className="max-w-7xl mx-auto px-4 py-8">
                 {/* Privacy notice */}
-                <div className="mb-8 p-4 bg-blue-50 rounded-xl border border-blue-200 flex items-start gap-3">
-                    <Shield className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
-                    <div className="text-sm text-blue-800">
+                <div className="mb-8 p-4 bg-primary-50 rounded-xl border border-primary-200 flex items-start gap-3">
+                    <Shield className="w-5 h-5 text-primary-600 flex-shrink-0 mt-0.5" />
+                    <div className="text-sm text-primary-800">
                         <p className="font-medium mb-1">Privacy-First Analytics</p>
-                        <p className="text-blue-700">
+                        <p className="text-primary-700">
                             All data shown is aggregated and anonymized. No personally identifiable information is displayed or stored.
                         </p>
                     </div>
@@ -101,7 +101,7 @@ function AdminDashboard() {
                                 className="bg-white rounded-2xl p-6 border border-gray-200 shadow-lg"
                             >
                                 <div className="flex items-center gap-3 mb-3">
-                                    <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-cyan-600 rounded-xl flex items-center justify-center">
+                                    <div className="w-12 h-12 bg-gradient-to-br from-primary-500 to-primary-600 rounded-xl flex items-center justify-center">
                                         <Users className="w-6 h-6 text-white" />
                                     </div>
                                     <div>
@@ -135,7 +135,7 @@ function AdminDashboard() {
                                 className="bg-white rounded-2xl p-6 border border-gray-200 shadow-lg"
                             >
                                 <div className="flex items-center gap-3 mb-3">
-                                    <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-pink-600 rounded-xl flex items-center justify-center">
+                                    <div className="w-12 h-12 bg-gradient-to-br from-secondary-500 to-secondary-600 rounded-xl flex items-center justify-center">
                                         <BarChart3 className="w-6 h-6 text-white" />
                                     </div>
                                     <div>

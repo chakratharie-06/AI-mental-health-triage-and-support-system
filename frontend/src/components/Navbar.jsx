@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { Menu, X, Home, MessageCircle, Heart, BookOpen, Wind, User, BarChart3, LogOut, Sun, Moon, Phone } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
+import axios from 'axios';
 
 const Navbar = () => {
     const [isOpen, setIsOpen] = useState(false);
@@ -9,8 +10,27 @@ const Navbar = () => {
     const location = useLocation();
     const { isDark, toggleTheme } = useTheme();
 
-    const handleLogout = () => {
+    const handleLogout = async () => {
+        try {
+            const token = localStorage.getItem('token');
+
+            // Call backend logout endpoint to clear conversations
+            await axios.post('http://localhost:5000/api/logout', {}, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+
+            console.log('✅ Logout successful - Chat cleared, analytics preserved');
+        } catch (error) {
+            console.error('Logout API error:', error);
+            // Continue with logout even if API fails
+        }
+
+        // Clear authentication and chat data from localStorage
         localStorage.removeItem('token');
+        localStorage.removeItem('chatMessages');
+        localStorage.removeItem('currentConversationId');
+
+        // Navigate to signin
         navigate('/signin');
     };
 
@@ -30,15 +50,7 @@ const Navbar = () => {
         <nav className="bg-white border-b border-gray-200 sticky top-0 z-50 shadow-sm">
             <div className="container mx-auto px-4">
                 <div className="flex items-center justify-between h-16">
-                    {/* Logo */}
-                    <Link to="/dashboard" className="flex items-center gap-2">
-                        <div className="w-10 h-10 bg-gradient-to-br from-primary-500 to-secondary-500 rounded-lg flex items-center justify-center">
-                            <span className="text-white font-bold text-xl">CN</span>
-                        </div>
-                        <span className="text-xl font-heading font-semibold text-gray-900">
-                            Care Nest
-                        </span>
-                    </Link>
+
 
                     {/* Desktop Navigation */}
                     <div className="hidden md:flex items-center gap-1">

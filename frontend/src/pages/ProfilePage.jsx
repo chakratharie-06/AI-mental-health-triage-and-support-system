@@ -109,13 +109,13 @@ function ProfilePage() {
                     className={`${isDarkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} rounded-2xl p-6 border shadow-lg mb-6`}
                 >
                     <div className="flex items-center gap-3 mb-4">
-                        <Globe className={`w-5 h-5 ${isDarkMode ? 'text-blue-400' : 'text-blue-600'}`} />
+                        <Globe className={`w-5 h-5 ${isDarkMode ? 'text-primary-400' : 'text-primary-600'}`} />
                         <h2 className={`text-lg font-bold ${isDarkMode ? 'text-gray-100' : 'text-gray-900'}`}>Language</h2>
                     </div>
                     <select
                         value={language}
                         onChange={(e) => setLanguage(e.target.value)}
-                        className={`w-full px-4 py-3 ${isDarkMode ? 'bg-gray-700 border-gray-600 text-gray-100' : 'bg-white border-gray-200 text-gray-900'} border rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none`}
+                        className={`w-full px-4 py-3 ${isDarkMode ? 'bg-gray-700 border-gray-600 text-gray-100' : 'bg-white border-gray-200 text-gray-900'} border rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none`}
                     >
                         {languages.map((lang) => (
                             <option key={lang} value={lang}>{lang}</option>
@@ -135,7 +135,7 @@ function ProfilePage() {
                             {isDarkMode ? (
                                 <Moon className="w-5 h-5 text-indigo-400" />
                             ) : (
-                                <Sun className="w-5 h-5 text-yellow-600" />
+                                <Sun className="w-5 h-5 text-warning-base" />
                             )}
                             <div>
                                 <h2 className={`text-lg font-bold ${isDarkMode ? 'text-gray-100' : 'text-gray-900'}`}>Theme</h2>
@@ -161,7 +161,7 @@ function ProfilePage() {
                     className={`${isDarkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} rounded-2xl p-6 border shadow-lg mb-6`}
                 >
                     <div className="flex items-center gap-3 mb-4">
-                        <Shield className={`w-5 h-5 ${isDarkMode ? 'text-green-400' : 'text-green-600'}`} />
+                        <Shield className={`w-5 h-5 ${isDarkMode ? 'text-green-400' : 'text-success-base'}`} />
                         <h2 className={`text-lg font-bold ${isDarkMode ? 'text-gray-100' : 'text-gray-900'}`}>Privacy</h2>
                     </div>
                     <div className={`p-4 ${isDarkMode ? 'bg-gray-700' : 'bg-gray-50'} rounded-xl`}>
@@ -181,7 +181,7 @@ function ProfilePage() {
                 >
                     <div className="flex items-center justify-between">
                         <div className="flex items-center gap-3">
-                            <Bell className={`w-5 h-5 ${isDarkMode ? 'text-purple-400' : 'text-purple-600'}`} />
+                            <Bell className={`w-5 h-5 ${isDarkMode ? 'text-secondary-400' : 'text-secondary-600'}`} />
                             <div>
                                 <h2 className={`text-lg font-bold ${isDarkMode ? 'text-gray-100' : 'text-gray-900'}`}>Notifications</h2>
                                 <p className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
@@ -191,7 +191,7 @@ function ProfilePage() {
                         </div>
                         <button
                             onClick={() => setNotifications(!notifications)}
-                            className={`w-12 h-6 rounded-full transition-colors ${notifications ? 'bg-purple-600' : isDarkMode ? 'bg-gray-700' : 'bg-gray-300'
+                            className={`w-12 h-6 rounded-full transition-colors ${notifications ? 'bg-secondary-600' : isDarkMode ? 'bg-gray-700' : 'bg-gray-300'
                                 } relative`}
                         >
                             <div className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full transition-transform ${notifications ? 'translate-x-6' : 'translate-x-0'
@@ -203,7 +203,7 @@ function ProfilePage() {
                 {/* Logout Button */}
                 <button
                     onClick={handleLogout}
-                    className="w-full py-4 bg-red-500 text-white font-semibold rounded-xl hover:bg-red-600 transition-colors shadow-lg flex items-center justify-center gap-2"
+                    className="w-full py-4 bg-danger-base text-white font-semibold rounded-xl hover:bg-red-600 transition-colors shadow-lg flex items-center justify-center gap-2"
                 >
                     <LogOut className="w-5 h-5" />
                     Logout

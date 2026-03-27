@@ -282,10 +282,10 @@ const ResourcesPage = () => {
     const getRecommendationColor = () => {
         if (!distressStatus) return 'bg-gray-100';
         switch (distressStatus.category) {
-            case 'low': return 'bg-green-50 border-green-200';
-            case 'medium': return 'bg-yellow-50 border-yellow-200';
+            case 'low': return 'bg-success-light border-success-base';
+            case 'medium': return 'bg-warning-light border-warning-base';
             case 'high': return 'bg-orange-50 border-orange-200';
-            case 'critical': return 'bg-red-50 border-red-200';
+            case 'critical': return 'bg-danger-light border-danger-base';
             default: return 'bg-gray-100';
         }
     };
@@ -370,10 +370,10 @@ const ResourcesPage = () => {
                 <div className="mb-6 bg-white rounded-xl shadow-sm overflow-hidden">
                     <button
                         onClick={() => toggleSection('emergency')}
-                        className="w-full px-6 py-4 flex items-center justify-between bg-red-50 hover:bg-red-100 transition-colors"
+                        className="w-full px-6 py-4 flex items-center justify-between bg-danger-light hover:bg-danger-light/80 transition-colors"
                     >
                         <div className="flex items-center gap-3">
-                            <AlertCircle className="w-6 h-6 text-red-600" />
+                            <AlertCircle className="w-6 h-6 text-danger-base" />
                             <h2 className="text-xl font-semibold text-gray-900">Emergency Helplines (24/7)</h2>
                         </div>
                         {expandedSections.emergency ? <ChevronUp /> : <ChevronDown />}
@@ -420,10 +420,10 @@ const ResourcesPage = () => {
                     <div className="mb-6 bg-white rounded-xl shadow-sm overflow-hidden">
                         <button
                             onClick={() => toggleSection('counselors')}
-                            className="w-full px-6 py-4 flex items-center justify-between bg-yellow-50 hover:bg-yellow-100 transition-colors"
+                            className="w-full px-6 py-4 flex items-center justify-between bg-warning-light hover:bg-warning-light/80 transition-colors"
                         >
                             <div className="flex items-center gap-3">
-                                <User className="w-6 h-6 text-yellow-600" />
+                                <User className="w-6 h-6 text-warning-base" />
                                 <h2 className="text-xl font-semibold text-gray-900">Professional Counselors</h2>
                             </div>
                             {expandedSections.counselors ? <ChevronUp /> : <ChevronDown />}
@@ -517,10 +517,10 @@ const ResourcesPage = () => {
                     <div className="mb-6 bg-white rounded-xl shadow-sm overflow-hidden">
                         <button
                             onClick={() => toggleSection('selfHelp')}
-                            className="w-full px-6 py-4 flex items-center justify-between bg-green-50 hover:bg-green-100 transition-colors"
+                            className="w-full px-6 py-4 flex items-center justify-between bg-success-light hover:bg-success-light/80 transition-colors"
                         >
                             <div className="flex items-center gap-3">
-                                <Heart className="w-6 h-6 text-green-600" />
+                                <Heart className="w-6 h-6 text-success-base" />
                                 <h2 className="text-xl font-semibold text-gray-900">Self-Help Resources</h2>
                             </div>
                             {expandedSections.selfHelp ? <ChevronUp /> : <ChevronDown />}
@@ -545,7 +545,7 @@ const ResourcesPage = () => {
                 )}
 
                 {/* Important Notice */}
-                <div className="mt-8 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                <div className="mt-8 p-4 bg-info-light border border-info-base rounded-lg">
                     <p className="text-sm text-gray-700">
                         <strong>Important:</strong> If you're experiencing a mental health emergency, please call emergency services (112) or visit the nearest hospital immediately.
                     </p>

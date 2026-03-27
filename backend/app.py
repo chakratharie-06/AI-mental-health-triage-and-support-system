@@ -1,11 +1,16 @@
 import os
 import time
+from dotenv import load_dotenv
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 from models import db, User, Conversation, MoodEntry, JournalEntry
 from auth import generate_token, token_required
 from triage_engine import triage_engine, enhanced_triage_engine
-from deep_translator import GoogleTranslator
+from resources import get_resources_by_state
+from openrouter_engine import generate_response as ai_generate_response
+
+# Load environment variables from .env file
+load_dotenv()
 
 app = Flask(__name__)
 CORS(app)
@@ -18,23 +23,7 @@ app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'care-nest-secret-key-change-
 
 db.init_app(app)
 
-# OpenAI Configuration
-# Gemini Configuration
-try:
-    import google.generativeai as genai
-    GEMINI_API_KEY = os.getenv('GEMINI_API_KEY')
-    if GEMINI_API_KEY:
-        genai.configure(api_key=GEMINI_API_KEY)
-        # Configure model
-        gemini_model = genai.GenerativeModel('gemini-pro')
-        USE_AI = True
-        print("[SUCCESS] Google Gemini AI enabled")
-    else:
-        USE_AI = False
-        print("[WARNING] No GEMINI_API_KEY found - using fallback responses")
-except ImportError:
-    USE_AI = False
-    print("[WARNING] google-generativeai package not installed - using fallback responses")
+print("[INFO] Using OpenRouter AI engine (z-ai/glm-4.5-air:free)")
 
 # Create tables
 with app.app_context():
@@ -65,8 +54,9 @@ Your dual role is to provide **Emotional Support** AND **Accurate Mental Health 
 
 4. **📦 STRUCTURED RESPONSE FORMAT**
    - Keep responses concise (2-4 sentences for normal chat, 1-2 for crisis).
+   - ALWAYS follow this Empathetic Conversation Framework: 1. Acknowledge the user's feelings. 2. Ask a gentle follow-up question. 3. Provide a small actionable suggestion.
    - Use clear, simple language. Avoid jargon.
-   - For crisis (RED severity): ALWAYS mention Tele MANAS (14416) in the first sentence.
+   - For crisis (RED severity): ALWAYS mention Kiran Helpline (1800-599-0019), Sneha Foundation (044-24640050), or iCall (9152987821) in the first sentence.
 
 ### 🛡️ SAFETY & COMPLIANCE RULES (MANDATORY):
 
@@ -125,7 +115,7 @@ Your dual role is to provide **Emotional Support** AND **Accurate Mental Health 
 ### ⚠️ Distress & Safety Protocols:
 -   **Level 0-2 (Mild/Moderate)**: Validate feelings, offer tips, ask open questions.
 -   **Level 3 (High Distress)**: Prioritize grounding. "I can hear how overwhelmed you are. Let's take a breath."
--   **Level 4 (Crisis)**: DIRECTIVE SAFETY. "I am concerned for your safety. Please reach out to Tele MANAS (14416) or a hospital immediately."
+-   **Level 4 (Crisis)**: DIRECTIVE SAFETY. "I am concerned for your safety. Please reach out to Kiran (1800-599-0019), Sneha Foundation (044-24640050), or iCall (9152987821) immediately."
 
 ### 🇮🇳 Cultural & Multilingual Context:
 -   **Languages Supported**: Fluent in English, Hindi, Tamil, Telugu, Kannada, Malayalam, Bengali, and Marathi.
@@ -247,10 +237,39 @@ def anonymous_login():
 @app.route('/api/me', methods=['GET'])
 @token_required
 def get_current_user(user_id):
-    user = User.query.get(user_id)
+    user = db.session.get(User, user_id)
     if not user:
         return jsonify({'error': 'User not found'}), 404
     return jsonify({'user': user.to_dict()})
+
+@app.route('/api/logout', methods=['POST'])
+@token_required
+def logout(user_id):
+    """
+    Logout endpoint that clears chat conversations for privacy
+    but preserves analytics data (mood entries, journal entries)
+    """
+    try:
+        # Delete all conversations for this user (chat messages)
+        Conversation.query.filter_by(user_id=user_id).delete()
+        
+        # Keep mood entries and journal entries for analytics
+        # They are NOT deleted
+        
+        db.session.commit()
+        
+        print(f"✅ User {user_id} logged out - Chat conversations cleared, analytics preserved")
+        
+        return jsonify({
+            'message': 'Logged out successfully',
+            'chat_cleared': True,
+            'analytics_preserved': True
+        }), 200
+        
+    except Exception as e:
+        print(f"❌ Logout error: {e}")
+        db.session.rollback()
+        return jsonify({'error': 'Logout failed'}), 500
 
 @app.route('/api/update-profile', methods=['POST'])
 @token_required
@@ -258,7 +277,7 @@ def update_profile(user_id):
     """Update user profile information (age group, preferences, etc.)"""
     try:
         data = request.json
-        user = User.query.get(user_id)
+        user = db.session.get(User, user_id)
         
         if not user:
             return jsonify({'error': 'User not found'}), 404
@@ -369,73 +388,84 @@ def get_analytics(user_id):
 @token_required
 def chat(user_id):
     data = request.json
-    user_message = data.get('message', '')
-    
+    user_message = data.get('message', '').strip()
+
     if not user_message:
         return jsonify({'error': 'Message is required'}), 400
-    
-    # Get or create conversation
-    conversation = Conversation.query.filter_by(user_id=user_id).order_by(Conversation.updated_at.desc()).first()
-    
+
+    # ── 1. Load / create conversation ────────────────────────────────────────
+    conversation = Conversation.query.filter_by(user_id=user_id)\
+        .order_by(Conversation.updated_at.desc()).first()
     if not conversation:
         conversation = Conversation(user_id=user_id)
         conversation.set_messages([])
         db.session.add(conversation)
-    
-    # Add user message
-    conversation.add_message('user', user_message)
-    
-    # Extract emojis from message
+
+    history = conversation.get_messages()
+
+    # ── 2. Triage ─────────────────────────────────────────────────────────────
     emojis = triage_engine.extract_emojis(user_message)
     emoji_context = ''.join(emojis) if emojis else None
-    
-    # Triage the message with emoji context
     severity, reason, intensity = triage_engine.analyze_severity(user_message, emoji_context)
-    
-    # Map Intensity (1-10) to Distress Level (0-4) per user spec
-    if intensity <= 2: distress_level = 0
+
+    # Map intensity (1-10) → distress level (0-4)
+    if intensity <= 2:   distress_level = 0
     elif intensity <= 4: distress_level = 1
     elif intensity <= 6: distress_level = 2
     elif intensity <= 8: distress_level = 3
-    else: distress_level = 4
+    else:                distress_level = 4
 
-    # Detect mood
-    detected_mood, mood_confidence, mood_reason = triage_engine.detect_mood(user_message, emoji_context)
-    
-    # Auto-save mood to database if confidence is high (for graph tracking)
-    # Lowered threshold to 30 to catch more subtle moods for testing
+    # ── 3. Mood detection ─────────────────────────────────────────────────────
+    detected_mood, mood_confidence, _ = triage_engine.detect_mood(user_message, emoji_context)
+
+    # Auto-save mood entry when confidence is sufficient
     if detected_mood and mood_confidence > 30:
         try:
-            # Check if we already saved a mood very recently (last 5 mins) to avoid spam? 
-            # For now, just save it.
-            mood_entry = MoodEntry(
-                user_id=user_id,
-                mood=detected_mood,
-                intensity=intensity
-            )
-            db.session.add(mood_entry)
+            db.session.add(MoodEntry(user_id=user_id, mood=detected_mood, intensity=intensity))
         except Exception as e:
-            print(f"Error auto-saving mood: {e}")
+            print(f"[Mood save error] {e}")
 
-    # Generate AI Response with intensity and mood awareness
-    # Get language from request
-    target_lang = data.get('language', 'en')
-    print(f"🌐 DEBUG: Received language code: {target_lang}")
-    
-    ai_response = generate_ai_response(
-        user_message, 
-        severity, 
-        intensity, 
-        conversation.get_messages(), 
-        detected_mood,
-        target_lang=target_lang
+    # ── 4. Escalation detection ───────────────────────────────────────────────
+    is_escalating = False
+    recent_user_msgs = [m for m in history if m.get('role') == 'user'][-3:]
+    if len(recent_user_msgs) >= 2:
+        past_intensities = []
+        for m in recent_user_msgs:
+            _, _, past_i = triage_engine.analyze_severity(m.get('text', ''))
+            past_intensities.append(past_i)
+        past_intensities.append(intensity)
+        if len(past_intensities) >= 3:
+            is_escalating = (
+                past_intensities[-1] > past_intensities[-2] >= past_intensities[-3]
+                or all(i >= 6 for i in past_intensities[-3:])
+            )
+        if is_escalating and severity != "RED":
+            severity = "RED"
+            intensity = max(intensity, 8)
+            distress_level = max(distress_level, 3)
+
+    # ── 5. Cultural context ───────────────────────────────────────────────────
+    cultural_context = data.get('culturalContext', '')
+    language = data.get('language', 'en-IN')
+
+    # ── 6. Save user message ──────────────────────────────────────────────────
+    conversation.add_message('user', user_message)
+
+    # ── 7. Generate AI response via OpenRouter ────────────────────────────────
+    ai_response = ai_generate_response(
+        user_message=user_message,
+        history=history,
+        severity=severity,
+        detected_mood=detected_mood,
+        language=language,
+        cultural_context=cultural_context,
+        is_escalating=is_escalating,
     )
-    
-    # Add AI message
+
+    # ── 8. Save AI message & commit ───────────────────────────────────────────
     conversation.add_message('ai', ai_response, severity, distress_level)
-    
     db.session.commit()
-    
+
     return jsonify({
         'response': ai_response,
         'triage_status': severity,
@@ -444,7 +474,8 @@ def chat(user_id):
         'detected_emojis': emojis,
         'detected_mood': detected_mood,
         'mood_confidence': mood_confidence,
-        'timestamp': time.time()
+        'is_escalating': is_escalating,
+        'timestamp': time.time(),
     })
 
 # ============ MOOD TRACKING ROUTES ============
@@ -492,7 +523,7 @@ def book_appointment():
 @token_required
 def update_user(current_user_id):
     data = request.json
-    user = User.query.get(current_user_id)
+    user = db.session.get(User, current_user_id)
     
     if not user:
         return jsonify({'error': 'User not found'}), 404
@@ -608,81 +639,92 @@ def get_user_distress_status(user_id):
 
 # ============ MOOD ROUTES ============
 
-@app.route('/api/mood', methods=['POST'])
-@token_required
-def add_mood(user_id):
-    data = request.json
-    
-    if not data.get('mood'):
-        return jsonify({'error': 'Mood is required'}), 400
-    
-    mood_entry = MoodEntry(
-        user_id=user_id,
-        mood=data['mood'],
-        intensity=data.get('intensity', 5),
-        note=data.get('note', '')
-    )
-    
-    db.session.add(mood_entry)
-    db.session.commit()
-    
-    return jsonify({
-        'message': 'Mood recorded',
-        'mood': mood_entry.to_dict()
-    }), 201
-
 @app.route('/api/mood/history', methods=['GET'])
 @token_required
 def get_mood_history(user_id):
     moods = MoodEntry.query.filter_by(user_id=user_id).order_by(MoodEntry.created_at.desc()).limit(30).all()
-    
-    return jsonify({
-        'moods': [mood.to_dict() for mood in moods]
-    })
+    return jsonify({'moods': [mood.to_dict() for mood in moods]})
 
 # ============ JOURNAL ROUTES ============
+
+@app.route('/api/journal', methods=['GET'])
+@token_required
+def get_journal_entries(user_id):
+    """Get all journal entries for the user"""
+    try:
+        entries = JournalEntry.query.filter_by(user_id=user_id)\
+            .order_by(JournalEntry.created_at.desc()).all()
+        return jsonify({'entries': [e.to_dict() for e in entries]}), 200
+    except Exception as e:
+        print(f"Error fetching journal entries: {e}")
+        return jsonify({'error': 'Failed to fetch entries'}), 500
+
 
 @app.route('/api/journal', methods=['POST'])
 @token_required
 def create_journal_entry(user_id):
+    """Save journal entry with keyword-based mood + distress detection"""
     data = request.json
-    
+
     if not data.get('content'):
         return jsonify({'error': 'Content is required'}), 400
-    
-    # AI/Rule-based Analysis
-    severity, reason, intensity = triage_engine.analyze_severity(data['content'])
-    detected_mood, confidence, mood_reason = triage_engine.detect_mood(data['content'])
 
-    # Auto-tag mood if not provided
-    mood_tag = data.get('mood_tag')
-    if not mood_tag and detected_mood:
-        mood_tag = detected_mood
+    content = data['content']
 
+    # 1. Detect mood from keywords in the journal text
+    detected_mood, mood_confidence, mood_reason = triage_engine.detect_mood(content)
+    mood_tag = data.get('mood_tag') or detected_mood or 'neutral'
+
+    # 2. Analyze distress level → gives severity (RED/YELLOW/GREEN) + intensity (1-10)
+    severity, distress_reason, distress_intensity = triage_engine.analyze_severity(content)
+
+    # 3. Save journal entry
     entry = JournalEntry(
         user_id=user_id,
-        title=data.get('title', 'Untitled Entry'),
-        content=data['content'],
+        title=data.get('title') or None,
+        content=content,
         mood_tag=mood_tag
     )
-    
     db.session.add(entry)
+
+    # 4. Save MoodEntry with REAL distress-based intensity (not flat 5)
+    mood_log = MoodEntry(
+        user_id=user_id,
+        mood=mood_tag,
+        intensity=distress_intensity,          # e.g. 9 for RED, 6 for YELLOW, 3 for GREEN
+        note=f'Journal: {distress_reason[:120]}' if distress_reason else 'Auto-detected from journal'
+    )
+    db.session.add(mood_log)
     db.session.commit()
-    
+
+    print(f"✅ Journal saved | user={user_id} | mood={mood_tag} | severity={severity} | intensity={distress_intensity}")
     return jsonify({
         'message': 'Journal entry saved',
         'entry': entry.to_dict(),
-        'analysis': {
-            'severity': severity,
-            'reason': reason,
-            'intensity': intensity,
-            'detected_mood': detected_mood
-        }
+        'detected_mood': mood_tag,
+        'severity': severity,
+        'distress_intensity': distress_intensity,
+        'mood_reason': mood_reason
     }), 201
 
-    return jsonify({
-        'entries': [e.to_dict() for e in entries]
-    })
+
+
+
+@app.route('/api/journal/<int:entry_id>', methods=['DELETE'])
+@token_required
+def delete_journal_entry(user_id, entry_id):
+    """Delete a journal entry"""
+    try:
+        entry = JournalEntry.query.filter_by(id=entry_id, user_id=user_id).first()
+        if not entry:
+            return jsonify({'error': 'Entry not found'}), 404
+        db.session.delete(entry)
+        db.session.commit()
+        return jsonify({'message': 'Entry deleted'}), 200
+    except Exception as e:
+        print(f"Error deleting entry: {e}")
+        db.session.rollback()
+        return jsonify({'error': 'Failed to delete entry'}), 500
 
 @app.route('/api/admin/insights', methods=['GET'])
 def get_admin_insights():
@@ -736,357 +778,6 @@ def get_admin_insights():
         'effectiveness_trend': effectiveness_trend
     })
 
-# ============ HELPER FUNCTIONS ============
-
-def generate_ai_response(user_message, severity, intensity, conversation_history, detected_mood=None, target_lang='en'):
-    """Generate contextual AI response using GPT or fallback with translation"""
-    
-    # If GPT is available, use it (Pass language instruction in prompt naturally via system prompt)
-    # If AI is available, use it (Pass language instruction in prompt naturally via system prompt)
-    if USE_AI:
-        try:
-            ai_response = generate_gemini_response(user_message, severity, intensity, conversation_history, detected_mood, target_lang)
-            
-            # FALLBACK TRANSLATION using Gemini API: Only translate if AI responded in English despite instructions
-            # Check if response contains mostly English characters (simple heuristic)
-            if target_lang and not target_lang.startswith('en'):
-                # Count English vs non-English characters
-                english_chars = sum(1 for c in ai_response if ord(c) < 128 and c.isalpha())
-                total_chars = sum(1 for c in ai_response if c.isalpha())
-                
-                # If more than 80% English characters, AI didn't follow instructions - translate as fallback
-                if total_chars > 0 and (english_chars / total_chars) > 0.8:
-                    try:
-                        # Map language codes to language names
-                        lang_name_map = {
-                            'hi-IN': 'Hindi', 'hi': 'Hindi',
-                            'ta-IN': 'Tamil', 'ta': 'Tamil',
-                            'te-IN': 'Telugu', 'te': 'Telugu',
-                            'kn-IN': 'Kannada', 'kn': 'Kannada',
-                            'ml-IN': 'Malayalam', 'ml': 'Malayalam',
-                            'bn-IN': 'Bengali', 'bn': 'Bengali',
-                            'mr-IN': 'Marathi', 'mr': 'Marathi'
-                        }
-                        
-                        target_language_name = lang_name_map.get(target_lang, target_lang)
-                        print(f"⚠️ AI responded in English - Using Gemini for translation to {target_language_name}")
-                        
-                        # Use Gemini API for high-quality, context-aware translation
-                        translation_prompt = f"""
-Translate the following mental health support message to {target_language_name}.
-
-IMPORTANT INSTRUCTIONS:
-1. Maintain the empathetic and supportive tone
-2. Use natural, conversational {target_language_name} (not literal translation)
-3. Use culturally appropriate expressions
-4. Preserve the emotional warmth and care in the message
-5. Sound like a native {target_language_name} mental health counselor
-
-Original message in English:
-{ai_response}
-
-Translated message in {target_language_name}:"""
-
-                        translation_response = gemini_model.generate_content(translation_prompt)
-                        translated_text = translation_response.text.strip()
-                        
-                        print(f"✅ Gemini translation complete to {target_language_name}")
-                        return translated_text
-                        
-                    except Exception as e:
-                        print(f"⚠️ Gemini translation error: {e}. Trying Google Translate fallback.")
-                        # Fallback to Google Translate if Gemini fails
-                        try:
-                            lang_code_map = {
-                                'hi-IN': 'hi', 'hi': 'hi',
-                                'ta-IN': 'ta', 'ta': 'ta',
-                                'te-IN': 'te', 'te': 'te',
-                                'kn-IN': 'kn', 'kn': 'kn',
-                                'ml-IN': 'ml', 'ml': 'ml',
-                                'bn-IN': 'bn', 'bn': 'bn',
-                                'mr-IN': 'mr', 'mr': 'mr'
-                            }
-                            translation_code = lang_code_map.get(target_lang, target_lang)
-                            translated_response = GoogleTranslator(source='auto', target=translation_code).translate(ai_response)
-                            print(f"✅ Google Translate fallback complete")
-                            return translated_response
-                        except Exception as e2:
-                            print(f"⚠️ All translation failed: {e2}. Returning original response.")
-                            return ai_response
-                else:
-                    print(f"✅ AI responded natively in {target_lang}")
-            
-            return ai_response
-            
-        except Exception as e:
-            print(f"GPT Error: {e}. Falling back to keyword responses.")
-            # Fall through to keyword-based responses
-    
-    # Fallback: Keyword-based responses via Triage Engine
-    # (This handles Knowledge Base, Severity, Mood, and Conversation Flow)
-    base_response = triage_engine.generate_rule_based_response(user_message, severity, conversation_history, detected_mood)
-    
-    # Mood acknowledgment prefix
-    mood_prefix = ""
-    if detected_mood:
-        mood_responses = {
-            'happy': "I can sense you're feeling good! ",
-            'sad': "I hear that you're feeling down. ",
-            'anxious': "It sounds like you're feeling anxious. ",
-            'angry': "I can tell you're feeling frustrated. ",
-            'stressed': "You seem really stressed right now. ",
-            'calm': "I'm glad you're feeling calm. ",
-            'confused': "It sounds like you're feeling uncertain. "
-        }
-        mood_prefix = mood_responses.get(detected_mood, "")
-    
-    final_response = f"{mood_prefix}{base_response}"
-    
-    # Translate if target language is not English
-    if target_lang and target_lang != 'en':
-        try:
-            final_response = GoogleTranslator(source='auto', target=target_lang).translate(final_response)
-        except Exception as e:
-            print(f"Translation Error: {e}")
-            
-            
-    # Proactive Mood Check-in (Soft Reflective Questions)
-    # Only ask if:
-    # 1. No detected mood (so we don't ask if they just told us)
-    # 2. Conversation has some depth (history length > 2)
-    # 3. Random chance (to avoid being annoying, e.g., 30% chance)
-    # 4. No Coping Strategy was just recommended (don't overwhelm)
-    import random
-    
-    # Get Coping Strategy first
-    coping_strategy = None
-    if detected_mood and 3 <= intensity <= 8:
-         # Only recommend if mood is clear and intensity is moderate
-         coping_strategy = triage_engine.get_coping_strategy(detected_mood, intensity)
-    
-    # Append Coping Strategy (Priority over Mood Check-in)
-    if coping_strategy:
-        # Translate strategy if needed
-        if target_lang and target_lang != 'en':
-             try:
-                coping_strategy = GoogleTranslator(source='auto', target=target_lang).translate(coping_strategy)
-             except:
-                pass
-        final_response += f"\n\n{coping_strategy}"
-        
-    # Append Mood Check-in (Secondary Priority)
-    elif not detected_mood and len(conversation_history) > 2 and random.random() < 0.3:
-        mood_questions = [
-            "\n\n(If you had to pick one word for your mood right now, what would it be?)",
-            "\n\n(How is your 'internal weather' feeling at this moment?)",
-            "\n\n(On a scale of 'Stormy' to 'Sunny', where are you right now?)",
-            "\n\n(Checking in: How heavy does your mind feel on a scale of 1-10?)"
-        ]
-        
-        # Translate the question too if needed
-        question = random.choice(mood_questions)
-        if target_lang and target_lang != 'en':
-             try:
-                question = GoogleTranslator(source='auto', target=target_lang).translate(question)
-             except:
-                pass
-    return final_response
-
-def validate_ai_response(response_text, severity):
-    """
-    Validate AI response against strict constraints and safety rules.
-    Returns (is_valid, error_message)
-    """
-    errors = []
-    
-    # Check 1: No cross-page context leakage
-    forbidden_terms = [
-        'journal page', 'journaling feature', 'journal section',
-        'relaxation page', 'relax page', 'relaxation tools',
-        'resources page', 'resource section',
-        'analytics page', 'analytics dashboard',
-        'assessment page', 'take the assessment',
-        'check out our', 'visit our', 'go to the'
-    ]
-    
-    response_lower = response_text.lower()
-    for term in forbidden_terms:
-        if term in response_lower:
-            errors.append(f"Cross-page context leakage detected: '{term}'")
-    
-    # Check 2: Crisis protocol compliance
-    if severity == "RED":
-        if "14416" not in response_text and "tele manas" not in response_lower:
-            errors.append("Crisis response missing Tele MANAS helpline")
-    
-    # Check 3: Response length (should be concise)
-    sentence_count = response_text.count('.') + response_text.count('!') + response_text.count('?')
-    if severity != "RED" and sentence_count > 6:
-        errors.append(f"Response too long: {sentence_count} sentences (max 6 for normal chat)")
-    
-    # Check 4: No vague memory references
-    vague_memory_terms = [
-        'last week', 'earlier session', 'previously mentioned',
-        'as we discussed before', 'remember when'
-    ]
-    for term in vague_memory_terms:
-        if term in response_lower:
-            errors.append(f"Vague memory reference detected: '{term}'")
-    
-    # Check 5: No medical diagnosis (SAFETY RULE)
-    diagnosis_terms = [
-        'you have depression', 'you have anxiety', 'you have bipolar',
-        'you have ptsd', 'you have ocd', 'you are depressed',
-        'you are bipolar', 'diagnosed with', 'you suffer from'
-    ]
-    for term in diagnosis_terms:
-        if term in response_lower:
-            errors.append(f"Medical diagnosis detected: '{term}' - AI cannot diagnose")
-    
-    # Check 6: No requests for private data (SAFETY RULE)
-    private_data_requests = [
-        'what is your full name', 'what is your address', 'phone number',
-        'medical records', 'id number', 'social security', 'aadhar number'
-    ]
-    for term in private_data_requests:
-        if term in response_lower:
-            errors.append(f"Private data request detected: '{term}'")
-    
-    # Check 7: Non-judgmental language (SAFETY RULE)
-    judgmental_terms = [
-        'you should feel', 'you must', "that's wrong", "don't feel that way",
-        'stop feeling', 'just get over it', 'snap out of it'
-    ]
-    for term in judgmental_terms:
-        if term in response_lower:
-            errors.append(f"Judgmental language detected: '{term}'")
-    
-    is_valid = len(errors) == 0
-    error_message = "; ".join(errors) if errors else None
-    
-    return is_valid, error_message
-
-def generate_gemini_response(user_message, severity, intensity, conversation_history, detected_mood=None, target_lang='en'):
-    """Generate response using Google Gemini with context awareness and validation"""
-    
-    # Map language codes to full language names
-    language_map = {
-        'en-IN': 'English',
-        'en': 'English',
-        'hi-IN': 'Hindi',
-        'hi': 'Hindi',
-        'ta-IN': 'Tamil',
-        'ta': 'Tamil',
-        'te-IN': 'Telugu',
-        'te': 'Telugu',
-        'kn-IN': 'Kannada',
-        'kn': 'Kannada',
-        'ml-IN': 'Malayalam',
-        'ml': 'Malayalam',
-        'bn-IN': 'Bengali',
-        'bn': 'Bengali',
-        'mr-IN': 'Marathi',
-        'mr': 'Marathi'
-    }
-    
-    # Debug logging
-    language_name = language_map.get(target_lang, 'English')
-    print(f"🌐 DEBUG: Language code '{target_lang}' mapped to '{language_name}'")
-    
-    # Construct the full prompt context
-    full_prompt = [f"SYSTEM INSTRUCTION: {SYSTEM_PROMPT}"]
-    
-    # Language Instruction - NATIVE LANGUAGE MODE
-    language_name = language_map.get(target_lang, 'English')
-    if target_lang and not target_lang.startswith('en'):
-        full_prompt.append(
-            f"""
-🌐 NATIVE {language_name.upper()} MODE ACTIVATED:
-
-1. THINK NATIVELY: Don't translate from English. Think directly in {language_name}.
-
-2. USE NATURAL EXPRESSIONS: Use how native {language_name} speakers actually talk:
-   - Natural conversational phrases
-   - Cultural idioms and expressions  
-   - Appropriate emotional vocabulary
-
-3. EXAMPLES - Native vs Translated:
-   
-   For Hindi:
-   ❌ Translated: "यह महसूस करना ठीक है"
-   ✅ Native: "आपका ऐसा महसूस करना बिल्कुल स्वाभाविक है"
-   
-   ❌ Translated: "मैं यहाँ हूँ"  
-   ✅ Native: "मैं आपके साथ हूँ"
-
-4. UNDERSTAND CODE-MIXING: User may mix English+{language_name}. Understand it, but respond in pure {language_name}.
-
-5. MENTAL HEALTH CONTEXT: Use culturally appropriate mental health terms in {language_name}.
-
-⚠️ ABSOLUTE RULE: 100% {language_name}. Zero English words. Sound like a native {language_name} mental health counselor.
-"""
-        )
-    else:
-        full_prompt.append(f"LANGUAGE: Respond in {language_name}.")
-
-    # Add mood context
-    if detected_mood:
-        full_prompt.append(f"CONTEXT: User's detected mood is: {detected_mood}. Acknowledge this feeling empathetically.")
-    
-    # Add severity context
-    if severity == "RED":
-        full_prompt.append(f"CRITICAL: User is in crisis (intensity {intensity}/10). Respond with URGENT empathy. Strongly encourage professional help. Mention Tele MANAS (14416).")
-    elif severity == "YELLOW":
-        full_prompt.append(f"IMPORTANT: User shows distress (intensity {intensity}/10). Gently suggest professional support.")
-
-    # Add conversation history
-    full_prompt.append("\nCONVERSATION HISTORY:")
-    recent_history = conversation_history[-6:] if len(conversation_history) > 6 else conversation_history
-    for msg in recent_history:
-        role = "User" if msg['role'] == 'user' else "AI"
-        full_prompt.append(f"{role}: {msg['text']}")
-    
-    # Add final language reminder for non-English languages
-    if target_lang and not target_lang.startswith('en'):
-        full_prompt.append(
-            f"\n🌐 LANGUAGE REMINDER #2: Remember, respond ONLY in {language_name}. "
-            f"Do not use any English words or phrases in your response."
-        )
-    
-    # Add current user message
-    full_prompt.append(f"\nUser (current message): {user_message}")
-    full_prompt.append("AI:")
-    
-    # Combine into single string for Gemini
-    final_prompt_text = "\n".join(full_prompt)
-    
-    try:
-        response = gemini_model.generate_content(final_prompt_text)
-        ai_response = response.text
-        
-        # Validate the response
-        is_valid, error_message = validate_ai_response(ai_response, severity)
-        
-        if not is_valid:
-            print(f"⚠️ AI Response Validation Failed: {error_message}")
-            print(f"Invalid Response: {ai_response[:100]}...")
-            # Log to file for review
-            with open('ai_validation_errors.log', 'a', encoding='utf-8') as f:
-                f.write(f"\n[{time.strftime('%Y-%m-%d %H:%M:%S')}] Validation Error: {error_message}\n")
-                f.write(f"User Message: {user_message}\n")
-                f.write(f"AI Response: {ai_response}\n")
-                f.write("-" * 80 + "\n")
-            
-            # Fallback to rule-based response on validation failure
-            return triage_engine.generate_rule_based_response(user_message, severity, conversation_history, detected_mood)
-        
-        return ai_response
-        
-    except Exception as e:
-        print(f"Gemini API Error: {e}")
-        # Fallback to triage engine if API fails
-        return triage_engine.generate_rule_based_response(user_message, severity, conversation_history, detected_mood)
-
 # ============ ADMIN/DEBUG ROUTES ============
 
 @app.route('/api/admin/data', methods=['GET'])
@@ -1095,78 +786,14 @@ def view_all_data():
     users = User.query.all()
     conversations = Conversation.query.all()
     moods = MoodEntry.query.all()
-    
     return jsonify({
-        'users': [
-            {
-                'id': u.id,
-                'name': u.name,
-                'email': u.email,
-                'created_at': u.created_at.isoformat()
-            } for u in users
-        ],
-        'conversations': [
-            {
-                'id': c.id,
-                'user_id': c.user_id,
-                'message_count': len(c.get_messages()),
-                'last_updated': c.updated_at.isoformat()
-            } for c in conversations
-        ],
+        'users': [{'id': u.id, 'name': u.name, 'email': u.email, 'created_at': u.created_at.isoformat()} for u in users],
+        'conversations': [{'id': c.id, 'user_id': c.user_id, 'message_count': len(c.get_messages()), 'last_updated': c.updated_at.isoformat()} for c in conversations],
         'mood_entries': [m.to_dict() for m in moods],
         'total_users': len(users),
         'total_conversations': len(conversations),
         'total_moods': len(moods)
     })
-
-
-# ============ ENHANCED TRIAGE ANALYSIS ENDPOINT ============
-
-@app.route('/api/triage/analyze', methods=['POST'])
-@token_required
-def analyze_triage(user_id):
-    """
-    Dedicated endpoint for enhanced distress analysis.
-    Accepts text and optional voice metadata.
-    Returns structured triage output with confidence scores.
-    """
-    try:
-        data = request.json
-        text = data.get('text', '')
-        voice_metadata = data.get('voice_metadata')  # Optional
-        
-        if not text:
-            return jsonify({'error': 'Text is required'}), 400
-        
-        # Validate voice_metadata format if provided
-        if voice_metadata:
-            valid_tones = ['flat', 'crying', 'agitated', 'slowed', 'normal']
-            valid_paces = ['slow', 'rapid', 'normal']
-            valid_pauses = ['frequent', 'long', 'normal']
-            
-            tone = voice_metadata.get('tone', '').lower()
-            pace = voice_metadata.get('pace', '').lower()
-            pauses = voice_metadata.get('pauses', '').lower()
-            
-            if tone and tone not in valid_tones:
-                return jsonify({'error': f'Invalid tone. Must be one of: {valid_tones}'}), 400
-            if pace and pace not in valid_paces:
-                return jsonify({'error': f'Invalid pace. Must be one of: {valid_paces}'}), 400
-            if pauses and pauses not in valid_pauses:
-                return jsonify({'error': f'Invalid pauses. Must be one of: {valid_pauses}'}), 400
-        
-        # Perform enhanced triage analysis
-        result = enhanced_triage_engine.analyze_distress_enhanced(text, voice_metadata)
-        
-        # Log the analysis (anonymized)
-        logger.info(f"Triage analysis: level={result['distress_level']}, confidence={result['confidence']}, voice={bool(voice_metadata)}")
-        
-        # Return structured output
-        return jsonify(result), 200
-        
-    except Exception as e:
-        logger.error(f"Triage analysis error: {str(e)}")
-        return jsonify({'error': 'Triage analysis failed'}), 500
 
 
 if __name__ == '__main__':

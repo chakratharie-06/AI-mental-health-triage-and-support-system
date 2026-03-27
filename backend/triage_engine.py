@@ -30,17 +30,23 @@ class EnhancedTriageEngine:
                 'availability': '24/7',
                 'description': "Government's Mental Health Helpline"
             },
-            'suicide_prevention': {
-                'name': 'KIRAN',
+            'kiran': {
+                'name': 'Kiran Mental Health Helpline',
                 'number': '1800-599-0019',
                 'availability': '24/7',
                 'description': 'Mental Health Rehabilitation Helpline'
             },
-            'crisis_support': {
-                'name': 'Vandrevala Foundation',
-                'number': '1860-266-2345',
+            'sneha': {
+                'name': 'Sneha Foundation',
+                'number': '044-24640050',
                 'availability': '24/7',
-                'description': 'Crisis Support and Counseling'
+                'description': 'Suicide Prevention and Crisis Support'
+            },
+            'icall': {
+                'name': 'iCall',
+                'number': '9152987821',
+                'availability': 'Mon-Sat, 10 AM-8 PM',
+                'description': 'Psychosocial Helpline'
             },
             'emergency': {
                 'name': 'Emergency Services',
@@ -357,8 +363,9 @@ class EnhancedTriageEngine:
         if distress_level == "high":
             return [
                 "🚨 This is a crisis situation. Your safety is the priority.",
-                f"📞 IMMEDIATE: Call Tele MANAS at {self.helplines['mental_health']['number']} (24/7)",
-                f"📞 Or call KIRAN at {self.helplines['suicide_prevention']['number']} (24/7)",
+                f"📞 IMMEDIATE: Call Kiran Mental Health Helpline at {self.helplines['kiran']['number']} (24/7)",
+                f"📞 Or call Sneha Foundation at {self.helplines['sneha']['number']} (24/7)",
+                f"📞 Or call iCall at {self.helplines['icall']['number']} (Mon-Sat, 10 AM-8 PM)",
                 f"🆘 In emergency: Call {self.helplines['emergency']['number']}",
                 "👥 Reach out to a trusted person RIGHT NOW",
                 "🏥 Consider visiting the nearest emergency room",
@@ -483,10 +490,12 @@ class TriageEngine:
         
         mood_patterns = {
             'happy': [r'happy', r'great', r'good', r'wonderful', r'excited'],
-            'sad': [r'sad', r'down', r'depressed', r'crying', r'tears'],
-            'anxious': [r'anxious', r'worried', r'nervous', r'panic', r'scared'],
-            'angry': [r'angry', r'mad', r'furious', r'frustrated'],
-            'stressed': [r'stressed', r'overwhelmed', r'pressure', r'burden'],
+            'sad': [r'sad', r'down', r'depressed', r'crying', r'tears', r'sadness', r'feeling low'],
+            'anxious': [r'anxious', r'worried', r'nervous', r'panic', r'scared', r'anxiety', r'ghabrahat', r'tension', r'too much tension'],
+            'angry': [r'angry', r'mad', r'furious', r'frustrated', r'frustration'],
+            'stressed': [r'stressed', r'overwhelmed', r'pressure', r'burden', r'stress', r'mind is not okay', r'studies pressure', r'academic pressure', r'burnout', r'life feels overwhelming'],
+            'lonely': [r'lonely', r'alone', r'isolation', r'loneliness', r'akela', r'no one to talk to'],
+            'helpless': [r'helpless', r'trapped', r'no way out', r'helplessness', r'stuck'],
             'calm': [r'calm', r'peaceful', r'relaxed', r'content'],
             'confused': [r'confused', r'lost', r'don\'t know', r'uncertain']
         }
@@ -577,7 +586,7 @@ class TriageEngine:
             return "Hi there! I'm Care Nest. I'm here to support you. How are you feeling? 💙"
         else:
             fallbacks = [
-                "I'm listening. Tell me more about what's on your mind? 💭",
+                "I'm listening. Tell me more about what's on your mind? ",
                 "It's okay to feel this way. I'm here for you.",
                 "Thanks for sharing. I'm here to help.",
                 "I hear you. What's bothering you the most right now?",

@@ -32,9 +32,9 @@ function SignUp() {
     // Password strength calculation
     const getPasswordStrength = (pwd) => {
         if (!pwd) return { level: 0, label: '', color: '' };
-        if (pwd.length < 6) return { level: 1, label: 'Weak', color: 'bg-red-500' };
-        if (pwd.length < 10) return { level: 2, label: 'Fair', color: 'bg-yellow-500' };
-        return { level: 3, label: 'Strong', color: 'bg-green-500' };
+        if (pwd.length < 6) return { level: 1, label: 'Weak', color: 'bg-danger-base' };
+        if (pwd.length < 10) return { level: 2, label: 'Fair', color: 'bg-warning-base' };
+        return { level: 3, label: 'Strong', color: 'bg-success-base' };
     };
 
     const passwordStrength = getPasswordStrength(formData.password);
@@ -82,12 +82,12 @@ function SignUp() {
     };
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-pink-50 via-white to-blue-50 flex items-center justify-center p-4">
+        <div className="min-h-screen bg-gradient-to-br from-primary-50 via-surface-primary to-secondary-50 flex items-center justify-center p-4">
             {/* Background decoration */}
             <div className="absolute inset-0 overflow-hidden pointer-events-none">
-                <div className="absolute top-10 right-20 w-64 h-64 bg-pink-200 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-blob"></div>
-                <div className="absolute top-1/3 left-10 w-64 h-64 bg-blue-200 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-blob animation-delay-2000"></div>
-                <div className="absolute bottom-20 left-1/3 w-64 h-64 bg-purple-200 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-blob animation-delay-4000"></div>
+                <div className="absolute top-10 right-20 w-64 h-64 bg-primary-200 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-blob"></div>
+                <div className="absolute top-1/3 left-10 w-64 h-64 bg-secondary-200 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-blob animation-delay-2000"></div>
+                <div className="absolute bottom-20 left-1/3 w-64 h-64 bg-primary-300 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-blob animation-delay-4000"></div>
             </div>
 
             {/* Main card */}
@@ -104,11 +104,13 @@ function SignUp() {
                             initial={{ scale: 0 }}
                             animate={{ scale: 1 }}
                             transition={{ delay: 0.2, type: "spring", stiffness: 200 }}
-                            className="inline-block mb-4"
+                            className="inline-block mb-1"
                         >
-                            <div className="w-16 h-16 bg-gradient-to-br from-pink-500 to-purple-600 rounded-2xl flex items-center justify-center mx-auto">
-                                <Heart className="w-8 h-8 text-white" />
-                            </div>
+                            <img
+                                src="/carenest-logo.png"
+                                alt="Care Nest Logo"
+                                className="h-96 w-auto mx-auto mix-blend-multiply"
+                            />
                         </motion.div>
                         <h1 className="text-3xl font-bold text-gray-800 mb-2">Join Care Nest</h1>
                         <p className="text-gray-600">Create your safe space for mental wellness</p>
@@ -119,10 +121,10 @@ function SignUp() {
                         <motion.div
                             initial={{ opacity: 0, y: -10 }}
                             animate={{ opacity: 1, y: 0 }}
-                            className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl flex items-start gap-3"
+                            className="mb-6 p-4 bg-danger-light border border-danger-base rounded-xl flex items-start gap-3"
                         >
-                            <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
-                            <p className="text-sm text-red-700">{error}</p>
+                            <AlertCircle className="w-5 h-5 text-danger-dark flex-shrink-0 mt-0.5" />
+                            <p className="text-sm text-danger-dark">{error}</p>
                         </motion.div>
                     )}
 
@@ -142,7 +144,7 @@ function SignUp() {
                                     value={formData.name}
                                     onChange={handleChange}
                                     required
-                                    className="w-full pl-11 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-pink-500 focus:border-transparent transition-all outline-none"
+                                    className="w-full pl-11 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all outline-none"
                                     placeholder="Your name"
                                     disabled={loading}
                                 />
@@ -163,7 +165,7 @@ function SignUp() {
                                     value={formData.email}
                                     onChange={handleChange}
                                     required
-                                    className="w-full pl-11 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-pink-500 focus:border-transparent transition-all outline-none"
+                                    className="w-full pl-11 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all outline-none"
                                     placeholder="you@example.com"
                                     disabled={loading}
                                 />
@@ -184,7 +186,7 @@ function SignUp() {
                                     value={formData.password}
                                     onChange={handleChange}
                                     required
-                                    className="w-full pl-11 pr-12 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-pink-500 focus:border-transparent transition-all outline-none"
+                                    className="w-full pl-11 pr-12 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all outline-none"
                                     placeholder="Create a strong password"
                                     disabled={loading}
                                 />
@@ -236,8 +238,8 @@ function SignUp() {
                                     onChange={handleChange}
                                     required
                                     className={`w-full pl-11 pr-12 py-3 bg-gray-50 border rounded-xl focus:ring-2 focus:border-transparent transition-all outline-none ${formData.confirmPassword && !passwordsMatch
-                                        ? 'border-red-300 focus:ring-red-200'
-                                        : 'border-gray-200 focus:ring-pink-500'
+                                        ? 'border-danger-base focus:ring-danger-light'
+                                        : 'border-gray-200 focus:ring-primary-500'
                                         }`}
                                     placeholder="Confirm your password"
                                     disabled={loading}
@@ -261,13 +263,13 @@ function SignUp() {
                                 >
                                     {passwordsMatch ? (
                                         <>
-                                            <CheckCircle2 className="w-4 h-4 text-green-500" />
-                                            <p className="text-xs text-green-600">Passwords match</p>
+                                            <CheckCircle2 className="w-4 h-4 text-success-base" />
+                                            <p className="text-xs text-success-dark">Passwords match</p>
                                         </>
                                     ) : (
                                         <>
-                                            <AlertCircle className="w-4 h-4 text-red-500" />
-                                            <p className="text-xs text-red-600">Passwords do not match</p>
+                                            <AlertCircle className="w-4 h-4 text-danger-base" />
+                                            <p className="text-xs text-danger-dark">Passwords do not match</p>
                                         </>
                                     )}
                                 </motion.div>
@@ -281,15 +283,15 @@ function SignUp() {
                                 type="checkbox"
                                 checked={agreedToTerms}
                                 onChange={(e) => setAgreedToTerms(e.target.checked)}
-                                className="w-4 h-4 text-pink-600 border-gray-300 rounded focus:ring-pink-500 mt-0.5"
+                                className="w-4 h-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500 mt-0.5"
                             />
                             <label htmlFor="terms" className="text-xs text-gray-600 leading-relaxed">
                                 I agree to the{' '}
-                                <button type="button" className="text-pink-600 hover:text-pink-700 font-medium">
+                                <button type="button" className="text-primary-600 hover:text-primary-700 font-medium">
                                     Terms of Service
                                 </button>{' '}
                                 and{' '}
-                                <button type="button" className="text-pink-600 hover:text-pink-700 font-medium">
+                                <button type="button" className="text-primary-600 hover:text-primary-700 font-medium">
                                     Privacy Policy
                                 </button>
                             </label>
@@ -299,7 +301,7 @@ function SignUp() {
                         <button
                             type="submit"
                             disabled={loading || !agreedToTerms}
-                            className="w-full py-3 bg-gradient-to-r from-pink-600 to-purple-600 text-white font-semibold rounded-xl hover:from-pink-700 hover:to-purple-700 focus:ring-4 focus:ring-pink-200 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-xl"
+                            className="w-full py-3 bg-gradient-to-r from-primary-600 to-secondary-600 text-white font-semibold rounded-xl hover:from-primary-700 hover:to-secondary-700 focus:ring-4 focus:ring-primary-200 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-xl"
                         >
                             {loading ? (
                                 <span className="flex items-center justify-center gap-2">
@@ -317,15 +319,15 @@ function SignUp() {
                         Already have an account?{' '}
                         <Link
                             to="/signin"
-                            className="text-pink-600 hover:text-pink-700 font-semibold transition-colors"
+                            className="text-primary-600 hover:text-primary-700 font-semibold transition-colors"
                         >
                             Sign in
                         </Link>
                     </p>
 
                     {/* Privacy assurance */}
-                    <div className="mt-6 p-4 bg-pink-50 rounded-xl border border-pink-100">
-                        <p className="text-xs text-pink-800 text-center leading-relaxed">
+                    <div className="mt-6 p-4 bg-primary-50 rounded-xl border border-primary-100">
+                        <p className="text-xs text-primary-800 text-center leading-relaxed">
                             🛡️ Your data is protected with industry-standard encryption.
                             We will never sell or share your personal information with third parties.
                         </p>

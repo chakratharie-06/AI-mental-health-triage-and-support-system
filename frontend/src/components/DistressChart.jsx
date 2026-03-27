@@ -15,9 +15,9 @@ const DistressChart = ({ data }) => {
         if (active && payload && payload.length) {
             const level = payload[0].value;
             let status = "Stable";
-            let color = "text-green-600";
-            if (level >= 3) { status = "High Distress"; color = "text-red-600"; }
-            else if (level >= 2) { status = "Elevated"; color = "text-yellow-600"; }
+            let color = "text-success-base";
+            if (level >= 3) { status = "High Distress"; color = "text-danger-base"; }
+            else if (level >= 2) { status = "Elevated"; color = "text-warning-base"; }
 
             return (
                 <div className="bg-white p-3 border border-gray-100 shadow-lg rounded-xl">

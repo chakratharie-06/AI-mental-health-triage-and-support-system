@@ -1,8 +1,10 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import Navbar from '../components/Navbar';
 
 const MoodTrackingPage = () => {
+    const navigate = useNavigate();
     const [selectedMood, setSelectedMood] = useState(null);
     const [intensity, setIntensity] = useState(5);
     const [notes, setNotes] = useState('');
@@ -28,23 +30,27 @@ const MoodTrackingPage = () => {
             const token = localStorage.getItem('token');
             await axios.post(
                 'http://localhost:5000/api/mood',
-                {
-                    mood: selectedMood,
-                    intensity: intensity,
-                    notes: notes
-                },
-                {
-                    headers: { Authorization: `Bearer ${token}` }
-                }
+                { mood: selectedMood, intensity, notes },
+                { headers: { Authorization: `Bearer ${token}` } }
             );
 
             setShowSuccess(true);
+
+            // Navigate to chat after 1.2s, passing mood context as router state
             setTimeout(() => {
-                setShowSuccess(false);
-                setSelectedMood(null);
-                setIntensity(5);
-                setNotes('');
-            }, 2000);
+                const moodObj = moods.find(m => m.value === selectedMood);
+                navigate('/chat', {
+                    state: {
+                        fromMood: true,
+                        mood: selectedMood,
+                        moodLabel: moodObj?.label || selectedMood,
+                        moodEmoji: moodObj?.emoji || '',
+                        intensity,
+                        notes: notes.trim(),
+                    }
+                });
+            }, 1200);
+
         } catch (error) {
             console.error('Error saving mood:', error);
             alert('Failed to save mood. Please try again.');
@@ -52,13 +58,13 @@ const MoodTrackingPage = () => {
     };
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-pink-50 via-purple-50 to-orange-50">
+        <div className="min-h-screen bg-gradient-to-br from-secondary-50 via-secondary-50 to-orange-50">
             <Navbar />
 
             <main className="container mx-auto px-4 py-8 max-w-3xl">
                 <div className="text-center mb-8">
                     <h1 className="text-4xl font-heading font-semibold text-gray-900 mb-2">
-                        How are you feeling? 💭
+                        How are you feeling? 
                     </h1>
                     <p className="text-lg text-gray-600">
                         Track your mood to understand your emotional patterns
@@ -142,7 +148,7 @@ const MoodTrackingPage = () => {
                     {showSuccess && (
                         <div className="mt-4 bg-success-light border-l-4 border-success-base rounded-lg p-4">
                             <p className="text-success-dark font-semibold flex items-center gap-2">
-                                <span>✓</span> Mood saved successfully!
+                                <span>✓</span> Mood saved! Taking you to chat...
                             </p>
                         </div>
                     )}

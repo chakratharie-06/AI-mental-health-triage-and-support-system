@@ -161,7 +161,7 @@ const ResourcesPage = () => {
                 {/* Location Filter */}
                 <div className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 mb-8 flex flex-wrap gap-4 items-center justify-between">
                     <div className="flex items-center gap-4">
-                        <div className="p-3 bg-blue-50 rounded-xl text-blue-600">
+                        <div className="p-3 bg-primary-50 rounded-xl text-primary-600">
                             <MapPin size={24} />
                         </div>
                         <div>
@@ -212,13 +212,13 @@ const ResourcesPage = () => {
                                             <div>
                                                 <h3 className="text-lg font-bold text-gray-800">{res.name}</h3>
                                                 <p className="text-sm text-gray-500 mt-1">{res.desc}</p>
-                                                <div className="mt-3 inline-flex items-center gap-2 px-3 py-1 bg-red-50 text-red-600 rounded-lg text-sm font-mono font-semibold">
+                                                <div className="mt-3 inline-flex items-center gap-2 px-3 py-1 bg-danger-light text-danger-base rounded-lg text-sm font-mono font-semibold">
                                                     {res.number}
                                                 </div>
                                             </div>
                                             <a
                                                 href={`tel:${res.number}`}
-                                                className="w-12 h-12 bg-red-100 text-red-600 rounded-full flex items-center justify-center group-hover:scale-110 transition-transform"
+                                                className="w-12 h-12 bg-red-100 text-danger-base rounded-full flex items-center justify-center group-hover:scale-110 transition-transform"
                                             >
                                                 <Phone size={20} />
                                             </a>
@@ -239,7 +239,7 @@ const ResourcesPage = () => {
                                                 <div>
                                                     <h3 className="font-bold text-gray-800 flex items-center gap-2">
                                                         {res.name}
-                                                        {res.verified && <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full">Verified</span>}
+                                                        {res.verified && <span className="text-xs bg-green-100 text-success-dark px-2 py-0.5 rounded-full">Verified</span>}
                                                     </h3>
                                                     <div className="flex items-center gap-1 text-sm text-gray-500 mt-1">
                                                         <MapPin size={14} />
@@ -270,7 +270,7 @@ const ResourcesPage = () => {
                                             </div>
                                             <div className="flex-1 text-center md:text-left">
                                                 <h3 className="text-lg font-bold text-gray-800">{doc.name}</h3>
-                                                <div className="flex items-center justify-center md:justify-start gap-1 text-yellow-500 my-1">
+                                                <div className="flex items-center justify-center md:justify-start gap-1 text-warning-base my-1">
                                                     <Star size={14} fill="currentColor" />
                                                     <span className="text-sm font-semibold text-gray-700">{doc.rating}</span>
                                                     <span className="text-xs text-gray-400">(120+ reviews)</span>
@@ -289,7 +289,7 @@ const ResourcesPage = () => {
                                             </div>
                                         </div>
                                     ))}
-                                    <div className="p-4 bg-purple-50 text-purple-700 text-sm rounded-xl text-center">
+                                    <div className="p-4 bg-secondary-50 text-secondary-700 text-sm rounded-xl text-center">
                                         Looking for specific specialists? <span className="font-bold underline cursor-pointer">Advanced Search</span>
                                     </div>
                                 </>
@@ -309,7 +309,7 @@ const ResourcesPage = () => {
                     >
                         {bookingStatus === 'success' ? (
                             <div className="text-center py-8">
-                                <div className="w-16 h-16 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                                <div className="w-16 h-16 bg-green-100 text-success-base rounded-full flex items-center justify-center mx-auto mb-4">
                                     <Star size={32} />
                                 </div>
                                 <h3 className="text-xl font-bold text-gray-800">Request Sent!</h3>

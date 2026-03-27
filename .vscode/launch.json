@@ -1,0 +1,56 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Backend - Flask (app.py)",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/backend/app.py",
+            "python": "${workspaceFolder}/backend/venv/Scripts/python.exe",
+            "cwd": "${workspaceFolder}/backend",
+            "envFile": "${workspaceFolder}/backend/.env",
+            "env": {
+                "FLASK_ENV": "development",
+                "FLASK_DEBUG": "1",
+                "FLASK_RUN_PORT": "5000"
+            },
+            "args": [],
+            "jinja": true,
+            "console": "integratedTerminal",
+            "justMyCode": true
+        },
+        {
+            "name": "Frontend - Vite Dev Server",
+            "type": "node",
+            "request": "launch",
+            "runtimeExecutable": "npm",
+            "runtimeArgs": [
+                "run",
+                "dev"
+            ],
+            "cwd": "${workspaceFolder}/frontend",
+            "console": "integratedTerminal",
+            "skipFiles": [
+                "<node_internals>/**"
+            ],
+            "env": {
+                "PORT": "5173"
+            }
+        }
+    ],
+    "compounds": [
+        {
+            "name": "Full Stack (Frontend + Backend)",
+            "configurations": [
+                "Backend - Flask (app.py)",
+                "Frontend - Vite Dev Server"
+            ],
+            "stopAll": true,
+            "presentation": {
+                "hidden": false,
+                "group": "fullstack",
+                "order": 1
+            }
+        }
+    ]
+}

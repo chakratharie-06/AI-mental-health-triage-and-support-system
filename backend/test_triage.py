@@ -76,8 +76,8 @@ def test_high_distress():
         
         assert result['distress_level'] == 'high', f"Expected 'high', got '{result['distress_level']}'"
         assert result['confidence'] >= 0.85, f"Confidence too low for crisis: {result['confidence']}"
-        assert 'Tele MANAS' in str(result['suggested_actions']), "Missing helpline in HIGH distress"
-        assert '14416' in str(result['suggested_actions']), "Missing helpline number"
+        assert 'Kiran' in str(result['suggested_actions']) or 'Sneha' in str(result['suggested_actions']), "Missing helpline in HIGH distress"
+        assert '1800-599-0019' in str(result['suggested_actions']) or '044-24640050' in str(result['suggested_actions']), "Missing helpline number"
         print("✓ PASSED")
 
 def test_voice_integration():
@@ -180,8 +180,8 @@ def test_safety_validation():
     actions_str = ' '.join(result['suggested_actions'])
     
     print("\n🔍 Checking HIGH distress safety features...")
-    assert '14416' in actions_str or 'Tele MANAS' in actions_str, "Missing Tele MANAS helpline"
-    print("  ✓ Tele MANAS helpline present")
+    assert '1800-599-0019' in actions_str or 'Kiran' in actions_str, "Missing Kiran helpline"
+    print("  ✓ Kiran/Sneha/iCall helpline present")
     
     assert '112' in actions_str or 'emergency' in actions_str.lower(), "Missing emergency number"
     print("  ✓ Emergency services present")

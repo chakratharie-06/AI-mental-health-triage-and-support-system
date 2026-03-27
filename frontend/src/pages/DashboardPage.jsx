@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import { Activity, Heart, TrendingUp, MessageCircle, BookOpen, Wind, Phone } from 'lucide-react';
+import { Activity, Heart, TrendingUp, MessageCircle, BookOpen, Wind, Phone, ClipboardList } from 'lucide-react';
 import Navbar from '../components/Navbar';
 
 const DashboardPage = () => {
@@ -48,6 +48,13 @@ const DashboardPage = () => {
     };
 
     const quickActions = [
+        {
+            title: 'Assessment',
+            description: 'Check your mental wellbeing',
+            icon: ClipboardList,
+            color: 'bg-primary-600',
+            path: '/assessment'
+        },
         {
             title: 'AI Chat Support',
             description: 'Talk to our AI companion',
@@ -130,15 +137,15 @@ const DashboardPage = () => {
                         </div>
                     </div>
 
-                    <div className="card bg-gradient-to-br from-green-50 to-green-100 border-green-200">
+                    <div className="card bg-gradient-to-br from-green-50 to-green-100 border-success-base">
                         <div className="flex items-center justify-between">
                             <div>
                                 <p className="text-sm font-medium text-gray-600 mb-1">Wellbeing Score</p>
-                                <p className="text-3xl font-heading font-bold text-green-700">
+                                <p className="text-3xl font-heading font-bold text-success-dark">
                                     {stats.wellbeingScore}/10
                                 </p>
                             </div>
-                            <div className="w-12 h-12 bg-green-500 rounded-lg flex items-center justify-center">
+                            <div className="w-12 h-12 bg-success-base rounded-lg flex items-center justify-center">
                                 <Heart className="w-6 h-6 text-white" />
                             </div>
                         </div>

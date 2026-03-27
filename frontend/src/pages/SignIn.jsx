@@ -114,12 +114,12 @@ function SignIn() {
     };
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 flex items-center justify-center p-4 relative overflow-hidden">
+        <div className="min-h-screen bg-surface-primary flex items-center justify-center p-4 relative overflow-hidden">
             {/* Animated background blobs */}
             <div className="absolute inset-0 overflow-hidden pointer-events-none">
-                <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-blue-300/20 rounded-full blur-3xl animate-blob"></div>
-                <div className="absolute top-1/3 right-1/4 w-96 h-96 bg-purple-300/20 rounded-full blur-3xl animate-blob animation-delay-2000"></div>
-                <div className="absolute bottom-1/4 left-1/3 w-96 h-96 bg-pink-300/20 rounded-full blur-3xl animate-blob animation-delay-4000"></div>
+                <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-primary-300/20 rounded-full blur-3xl animate-blob"></div>
+                <div className="absolute top-1/3 right-1/4 w-96 h-96 bg-secondary-300/20 rounded-full blur-3xl animate-blob animation-delay-2000"></div>
+                <div className="absolute bottom-1/4 left-1/3 w-96 h-96 bg-primary-200/20 rounded-full blur-3xl animate-blob animation-delay-4000"></div>
             </div>
 
             <motion.div
@@ -128,20 +128,24 @@ function SignIn() {
                 className="w-full max-w-md relative z-10"
             >
                 {/* Header */}
-                <div className="text-center mb-8">
-                    <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-blue-600 to-purple-600 rounded-2xl mb-4">
-                        <Sparkles className="w-8 h-8 text-white" />
+                <div className="text-center mb-4">
+                    <div className="inline-flex items-center justify-center mb-1">
+                        <img
+                            src="/carenest-logo.png"
+                            alt="Care Nest Logo"
+                            className="h-96 w-auto mix-blend-multiply"
+                        />
                     </div>
                     <h1 className="text-3xl font-bold text-gray-800 mb-2">Welcome Back</h1>
                     <p className="text-gray-600">Sign in to continue your journey with Care Nest</p>
                 </div>
 
                 {/* Sign In Card */}
-                <div className="bg-white/80 backdrop-blur-lg rounded-2xl shadow-2xl p-8 border border-white/20">
+                <div className="bg-surface-primary/80 backdrop-blur-lg rounded-2xl shadow-2xl p-8 border border-white/20">
                     {error && (
-                        <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl flex items-start gap-3">
-                            <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
-                            <p className="text-sm text-red-800">{error}</p>
+                        <div className="mb-6 p-4 bg-danger-light border border-danger-base rounded-xl flex items-start gap-3">
+                            <AlertCircle className="w-5 h-5 text-danger-dark flex-shrink-0 mt-0.5" />
+                            <p className="text-sm text-danger-dark">{error}</p>
                         </div>
                     )}
 
@@ -157,7 +161,7 @@ function SignIn() {
                                     type="email"
                                     value={email}
                                     onChange={(e) => setEmail(e.target.value)}
-                                    className="w-full pl-11 pr-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
+                                    className="w-full pl-11 pr-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none transition-all"
                                     placeholder="you@example.com"
                                     required
                                 />
@@ -175,7 +179,7 @@ function SignIn() {
                                     type={showPassword ? 'text' : 'password'}
                                     value={password}
                                     onChange={(e) => setPassword(e.target.value)}
-                                    className="w-full pl-11 pr-12 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
+                                    className="w-full pl-11 pr-12 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none transition-all"
                                     placeholder="••••••••"
                                     required
                                 />
@@ -196,11 +200,11 @@ function SignIn() {
                                     type="checkbox"
                                     checked={rememberMe}
                                     onChange={(e) => setRememberMe(e.target.checked)}
-                                    className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
+                                    className="w-4 h-4 text-primary-600 border-gray-300 rounded focus:ring-2 focus:ring-primary-500"
                                 />
                                 <span className="text-sm text-gray-700">Remember me</span>
                             </label>
-                            <button type="button" className="text-sm text-blue-600 hover:text-blue-700 font-medium">
+                            <button type="button" className="text-sm text-primary-600 hover:text-primary-700 font-medium">
                                 Forgot password?
                             </button>
                         </div>
@@ -209,7 +213,7 @@ function SignIn() {
                         <button
                             type="submit"
                             disabled={loading}
-                            className="w-full py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white font-semibold rounded-xl hover:from-blue-700 hover:to-purple-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
+                            className="w-full py-3 bg-gradient-to-r from-primary-600 to-secondary-600 text-white font-semibold rounded-xl hover:from-primary-700 hover:to-secondary-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
                         >
                             {loading ? 'Signing In...' : 'Sign In'}
                         </button>
@@ -237,15 +241,15 @@ function SignIn() {
                     {/* Sign Up Link */}
                     <p className="mt-6 text-center text-sm text-gray-600">
                         Don't have an account?{' '}
-                        <Link to="/signup" className="text-blue-600 hover:text-blue-700 font-semibold">
+                        <Link to="/signup" className="text-primary-600 hover:text-primary-700 font-semibold">
                             Sign up
                         </Link>
                     </p>
                 </div>
 
                 {/* Privacy Note */}
-                <div className="mt-6 p-4 bg-blue-50 rounded-xl border border-blue-100">
-                    <p className="text-xs text-blue-800 text-center leading-relaxed">
+                <div className="mt-6 p-4 bg-primary-50 rounded-xl border border-primary-100">
+                    <p className="text-xs text-primary-800 text-center leading-relaxed">
                         🔒 Your privacy is our priority. All data is encrypted and secure.
                     </p>
                 </div>
