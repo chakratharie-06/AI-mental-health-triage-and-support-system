@@ -489,15 +489,15 @@ class TriageEngine:
         text_lower = text.lower()
         
         mood_patterns = {
-            'happy': [r'happy', r'great', r'good', r'wonderful', r'excited'],
-            'sad': [r'sad', r'down', r'depressed', r'crying', r'tears', r'sadness', r'feeling low'],
-            'anxious': [r'anxious', r'worried', r'nervous', r'panic', r'scared', r'anxiety', r'ghabrahat', r'tension', r'too much tension'],
-            'angry': [r'angry', r'mad', r'furious', r'frustrated', r'frustration'],
-            'stressed': [r'stressed', r'overwhelmed', r'pressure', r'burden', r'stress', r'mind is not okay', r'studies pressure', r'academic pressure', r'burnout', r'life feels overwhelming'],
-            'lonely': [r'lonely', r'alone', r'isolation', r'loneliness', r'akela', r'no one to talk to'],
-            'helpless': [r'helpless', r'trapped', r'no way out', r'helplessness', r'stuck'],
-            'calm': [r'calm', r'peaceful', r'relaxed', r'content'],
-            'confused': [r'confused', r'lost', r'don\'t know', r'uncertain']
+            'happy': [r'happy', r'great', r'good', r'wonderful', r'excited', r'amazing', r'awesome', r'joy', r'fantastic', r'glad', r'best day', r'loved it', r'smile'],
+            'sad': [r'sad', r'down', r'depressed', r'crying', r'tears', r'sadness', r'feeling low', r'unhappy', r'miserable', r'heartbroken', r'hurt', r'terrible day', r'awful', r'pain', r'worthless', r'failure'],
+            'anxious': [r'anxious', r'worried', r'nervous', r'panic', r'scared', r'anxiety', r'ghabrahat', r'tension', r'too much tension', r'fear', r'terrified', r'restless', r'dread'],
+            'angry': [r'angry', r'mad', r'furious', r'frustrated', r'frustration', r'annoyed', r'irritated', r'hate', r'pissed', r'rage', r'yelled', r'upset'],
+            'stressed': [r'stressed', r'overwhelmed', r'pressure', r'burden', r'stress', r'mind is not okay', r'studies pressure', r'academic pressure', r'burnout', r'life feels overwhelming', r'tired', r'exhausted', r'too much to do', r'drained'],
+            'lonely': [r'lonely', r'alone', r'isolation', r'loneliness', r'akela', r'no one to talk to', r'abandoned', r'ignored', r'left out', r'empty', r'nobody'],
+            'helpless': [r'helpless', r'trapped', r'no way out', r'helplessness', r'stuck', r'despair', r"can't do anything", r'give up', r'hopeless', r'pointless', r'die', r'suicide', r'kill', r'end it', r'better off dead', r'no reason to live'],
+            'calm': [r'calm', r'peaceful', r'relaxed', r'content', r'quiet', r'chill', r'at ease', r'okay', r'fine', r'alright'],
+            'confused': [r'confused', r'lost', r"don't know", r'uncertain', r'unsure', r"don't understand", r'not sure', r'mixed feelings']
         }
         
         detected_moods = {}

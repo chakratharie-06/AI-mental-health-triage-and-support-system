@@ -15,22 +15,31 @@ from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 from dotenv import load_dotenv
 
-load_dotenv()
+load_dotenv(os.path.join(os.path.dirname(__file__), '.env'))
 
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
+GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1/chat/completions"
-MODEL = "z-ai/glm-4.5-air:free"
+GROQ_BASE_URL = "https://api.groq.com/openai/v1/chat/completions"
+MODEL = "deepseek/deepseek-chat-v3-0324:free"
 
-# Fallback model chain — tried in order if the primary fails with 404
+# Fallback model chain — tried in order if the primary fails with 404/429
 FALLBACK_MODELS = [
-    "z-ai/glm-4.5-air:free",
-    "qwen/qwen3-next-80b-a3b-instruct:free",
-    "openai/gpt-oss-120b:free",
-    "openai/gpt-oss-20b:free",
-    "nvidia/nemotron-3-super-120b-a12b:free",
+    "deepseek/deepseek-chat-v3-0324:free",
+    "deepseek/deepseek-r1-0528:free",
     "meta-llama/llama-3.3-70b-instruct:free",
-    "mistralai/mistral-7b-instruct:free",
+    "google/gemma-3-27b-it:free",
+    "google/gemma-3-12b-it:free",
+    "google/gemma-3-4b-it:free",
 ]
+
+# Models that don't support the 'system' role
+NO_SYSTEM_ROLE_MODELS = {
+    "google/gemma-3-12b-it:free",
+    "google/gemma-3-27b-it:free",
+    "google/gemma-3-4b-it:free",
+    "google/gemma-3n-e4b-it:free",
+}
 
 # ── System prompt ────────────────────────────────────────────────────────────
 
@@ -115,6 +124,7 @@ def _build_messages(
     language: str,
     cultural_context: str,
     is_escalating: bool,
+    past_moods_summary: str = "",
 ) -> List[Dict]:
     """
     Construct the full messages array for the API call.
@@ -128,6 +138,9 @@ def _build_messages(
 
     if detected_mood:
         addendum_parts.append(f"DETECTED MOOD: {detected_mood}. Lead with empathy for this specific feeling.")
+
+    if past_moods_summary:
+        addendum_parts.append(f"PREVIOUS MOOD JOURNEY: User recently logged feeling {past_moods_summary}. Factor this history into your empathy.")
 
     if is_escalating:
         addendum_parts.append(
@@ -189,6 +202,40 @@ def _make_session() -> requests.Session:
 _SESSION = _make_session()
 
 
+# ── Groq fast-path (→ falls back to OpenRouter if Groq is unavailable) ──────────
+def _call_groq(messages: List[Dict]) -> Optional[str]:
+    """Try Groq first — it’s fastest and most reliable. Returns None on any error."""
+    if not GROQ_API_KEY:
+        return None
+    # Groq doesn’t support the 'system' role before any user message in some models;
+    # llama-3.3-70b-versatile handles it fine.
+    try:
+        resp = _SESSION.post(
+            GROQ_BASE_URL,
+            headers={
+                "Authorization": f"Bearer {GROQ_API_KEY}",
+                "Content-Type": "application/json",
+            },
+            data=json.dumps({
+                "model": "llama-3.3-70b-versatile",
+                "messages": messages,
+                "max_tokens": 512,
+                "temperature": 0.85,
+            }),
+            timeout=30,
+        )
+        if resp.status_code == 200:
+            text = resp.json()["choices"][0]["message"].get("content", "").strip()
+            if text:
+                print("[AI] Groq responded successfully.")
+                return text
+        else:
+            print(f"[Groq] {resp.status_code} — falling back to OpenRouter")
+    except Exception as e:
+        print(f"[Groq] Error: {e} — falling back to OpenRouter")
+    return None
+
+
 # ── Core API call ─────────────────────────────────────────────────────────────
 
 def call_openrouter(
@@ -213,11 +260,13 @@ def call_openrouter(
     payload: Dict = {
         "model": MODEL,
         "messages": messages,
-        "temperature": 0.7,
+        "temperature": 0.85,
         "max_tokens": 512,
+        "frequency_penalty": 0.6,
+        "presence_penalty": 0.3,
     }
-    if reasoning_enabled:
-        payload["reasoning"] = {"enabled": True}
+    # if reasoning_enabled:
+    #     payload["reasoning"] = {"enabled": True}  # Groq does not support this parameter
 
     headers = {
         "Authorization": f"Bearer {OPENROUTER_API_KEY}",
@@ -233,6 +282,21 @@ def call_openrouter(
 
     for model in models_to_try:
         payload["model"] = model
+
+        # Some providers (Google AI Studio) don't support the 'system' role.
+        # Merge system content into the first user message instead.
+        send_messages = list(messages)
+        if model in NO_SYSTEM_ROLE_MODELS and send_messages and send_messages[0]["role"] == "system":
+            system_content = send_messages[0]["content"]
+            send_messages = send_messages[1:]  # drop system message
+            if send_messages and send_messages[0]["role"] == "user":
+                send_messages[0] = {
+                    **send_messages[0],
+                    "content": system_content + "\n\n---\n\n" + send_messages[0]["content"]
+                }
+            else:
+                send_messages.insert(0, {"role": "user", "content": system_content})
+        payload["messages"] = send_messages
         for attempt in range(2):
             try:
                 response = _SESSION.post(
@@ -266,11 +330,11 @@ def call_openrouter(
 
             except requests.exceptions.HTTPError as e:
                 status = e.response.status_code if e.response is not None else 0
-                if status == 404:
-                    print(f"[OpenRouter] 404 on {model} (guardrail/policy block) — trying next model")
+                if status in (404, 429):
+                    print(f"[OpenRouter] {status} on {model} — trying next model")
                     last_err = e
-                    break  # skip remaining attempts for this model, try next
-                raise  # non-404 HTTP errors bubble up immediately
+                    break  # try next model in chain
+                raise  # other HTTP errors bubble up
 
     raise last_err
 
@@ -287,10 +351,11 @@ def generate_response(
     language: str = "en",
     cultural_context: str = "",
     is_escalating: bool = False,
+    past_moods_summary: str = "",
 ) -> str:
     """
-    Main entry point. Generates an AI response using OpenRouter.
-    Falls back to a safe rule-based response on any error.
+    Main entry point. Tries Groq first (fast), then OpenRouter (fallback).
+    Falls back to a safe rule-based response on total failure.
     """
     try:
         messages = _build_messages(
@@ -301,8 +366,15 @@ def generate_response(
             language=language,
             cultural_context=cultural_context,
             is_escalating=is_escalating,
+            past_moods_summary=past_moods_summary,
         )
 
+        # ① Try Groq first
+        groq_text = _call_groq(messages)
+        if groq_text:
+            return groq_text
+
+        # ② Fall back to OpenRouter model chain
         text, _ = call_openrouter(messages, reasoning_enabled=True)
 
         if not text:

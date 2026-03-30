@@ -1,14 +1,13 @@
 import { useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { Menu, X, Home, MessageCircle, Heart, BookOpen, Wind, User, BarChart3, LogOut, Sun, Moon, Phone } from 'lucide-react';
-import { useTheme } from '../context/ThemeContext';
+import { Menu, X, Home, MessageCircle, Heart, BookOpen, Wind, User, BarChart3, LogOut, Phone } from 'lucide-react';
 import axios from 'axios';
 
 const Navbar = () => {
     const [isOpen, setIsOpen] = useState(false);
     const navigate = useNavigate();
     const location = useLocation();
-    const { isDark, toggleTheme } = useTheme();
+
 
     const handleLogout = async () => {
         try {
@@ -74,14 +73,6 @@ const Navbar = () => {
 
                     {/* User Menu */}
                     <div className="hidden md:flex items-center gap-2">
-                        {/* Theme Toggle */}
-                        <button
-                            onClick={toggleTheme}
-                            className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
-                            aria-label={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
-                        >
-                            {isDark ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
-                        </button>
                         <Link
                             to="/profile"
                             className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
@@ -91,10 +82,11 @@ const Navbar = () => {
                         </Link>
                         <button
                             onClick={handleLogout}
-                            className="p-2 text-gray-600 hover:text-danger-base hover:bg-danger-light rounded-lg transition-colors"
+                            className="flex items-center gap-2 px-4 py-2 ml-2 text-sm font-bold text-rose-600 bg-rose-50 hover:bg-rose-100 hover:text-rose-700 rounded-full transition-all border border-rose-100 shadow-sm"
                             aria-label="Logout"
                         >
-                            <LogOut className="w-5 h-5" />
+                            <LogOut className="w-4 h-4" />
+                            <span>Sign Out</span>
                         </button>
                     </div>
 
@@ -137,26 +129,15 @@ const Navbar = () => {
                                 <User className="w-5 h-5" />
                                 <span>Profile</span>
                             </Link>
-                            {/* Theme Toggle */}
-                            <button
-                                onClick={() => {
-                                    toggleTheme();
-                                    setIsOpen(false);
-                                }}
-                                className="flex items-center gap-3 px-4 py-3 rounded-lg text-gray-600 hover:bg-gray-100 hover:text-gray-900 w-full"
-                            >
-                                {isDark ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
-                                <span>{isDark ? 'Light Mode' : 'Dark Mode'}</span>
-                            </button>
                             <button
                                 onClick={() => {
                                     setIsOpen(false);
                                     handleLogout();
                                 }}
-                                className="flex items-center gap-3 px-4 py-3 rounded-lg text-gray-600 hover:bg-danger-light hover:text-danger-base w-full"
+                                className="flex items-center justify-center gap-2 px-4 py-3 mt-4 rounded-xl font-bold text-rose-600 bg-rose-50 border border-rose-100 hover:bg-rose-100 w-full transition-all shadow-sm"
                             >
                                 <LogOut className="w-5 h-5" />
-                                <span>Logout</span>
+                                <span>Sign Out</span>
                             </button>
                         </div>
                     </div>

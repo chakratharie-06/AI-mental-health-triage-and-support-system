@@ -19,6 +19,7 @@ class User(db.Model):
     conversations = db.relationship('Conversation', backref='user', lazy=True, cascade='all, delete-orphan')
     mood_entries = db.relationship('MoodEntry', backref='user', lazy=True, cascade='all, delete-orphan')
     journal_entries = db.relationship('JournalEntry', backref='user', lazy=True, cascade='all, delete-orphan')
+    time_logs = db.relationship('TimeLog', backref='user', lazy=True, cascade='all, delete-orphan')
     
     def set_password(self, password):
         self.password_hash = generate_password_hash(password)
@@ -97,5 +98,20 @@ class JournalEntry(db.Model):
             'title': self.title,
             'content': self.content,
             'mood_tag': self.mood_tag,
+            'created_at': self.created_at.isoformat()
+        }
+
+class TimeLog(db.Model):
+    __tablename__ = 'time_logs'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    minutes = db.Column(db.Integer, default=0, nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'minutes': self.minutes,
             'created_at': self.created_at.isoformat()
         }

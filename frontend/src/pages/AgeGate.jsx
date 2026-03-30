@@ -1,19 +1,47 @@
-import React from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Heart, UserCheck, Accessibility } from 'lucide-react';
+import { Heart, UserCheck, Accessibility, Loader2 } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
 
 function AgeGate() {
     const navigate = useNavigate();
+    const location = useLocation();
+    const { anonymousLogin } = useAuth();
+    const [loading, setLoading] = useState(false);
 
-    const handleSelection = (ageGroup) => {
-        // Save selection to localStorage so it persists to the SignUp page
+    // Check if we arrived here from the "Try anonymously" flow
+    const isAnonymousFlow = location.state?.anonymous === true;
+
+    const handleSelection = async (ageGroup) => {
         localStorage.setItem('selected_age_group', ageGroup);
-        navigate('/signup');
+
+        if (isAnonymousFlow) {
+            // Anonymous flow: log in silently and go straight to Chat
+            setLoading(true);
+            try {
+                await anonymousLogin();
+                navigate('/chat', { replace: true });
+            } catch (err) {
+                console.error('Anonymous login failed:', err);
+                setLoading(false);
+            }
+        } else {
+            // Normal flow: go to Sign Up
+            navigate('/signup');
+        }
     };
 
     return (
         <div className="min-h-screen bg-gradient-to-br from-wysa-bg via-secondary-50 to-secondary-50 flex flex-col items-center justify-center p-4">
+
+            {/* Loading overlay while anonymous login is in progress */}
+            {loading && (
+                <div className="fixed inset-0 z-50 bg-white/80 backdrop-blur-sm flex flex-col items-center justify-center gap-4">
+                    <Loader2 className="w-10 h-10 text-violet-600 animate-spin" />
+                    <p className="text-sm font-semibold text-gray-600">Setting up your private session...</p>
+                </div>
+            )}
 
             {/* Header / Logo */}
             <motion.div

@@ -1,247 +1,305 @@
-/**
- * ============================================================================
- * CARE NEST - LANDING PAGE
- * ============================================================================
- * 
- * @title Landing Page - Welcome to Care Nest
- * @author Care Nest AI
- * @date 2026-01-28T16:26:00+05:30
- * @version 1.0.0
- * @checksum SHA256:e8a4b2c9f1d7e3a6b8c4f2d9e7a3b1c8f5d2a9e6b4c1f8d5a2e9b7c4f1d8a5
- * 
- * ============================================================================
- * CONTENT BODY
- * ============================================================================
- * 
- * This is the primary landing page for Care Nest, introducing visitors to
- * the platform's mission of providing accessible, empathetic mental health
- * support. Features a welcoming hero section, key benefits, safety messaging,
- * and clear calls-to-action.
- * 
- * Key Features:
- * - Hero section with mission statement
- * - Key benefits showcase (3 cards)
- * - Safety and privacy assurance
- * - Sign In / Sign Up CTAs
- * - Responsive design with animated elements
- * - No navigation to other pages (standalone)
- * 
- * Design Philosophy:
- * - Teal to blue gradient for trust and calm
- * - Welcoming, professional tone
- * - Clear value proposition
- * - Accessible and inclusive messaging
- * 
- * ============================================================================
- * REFERENCES
- * ============================================================================
- * 
- * - General mental health awareness best practices
- * - WCAG 2.1 accessibility guidelines
- * - Landing page UX patterns
- * - Privacy-first design principles
- * 
- * ============================================================================
- * VALIDITY CHECK
- * ============================================================================
- * 
- * ✓ Isolation Respected: This page is completely standalone with no references
- *   to other Care Nest features or pages
- * 
- * ✓ No Private Data: No user data, API keys, or sensitive information hardcoded
- * 
- * ✓ Complete & Ethical: All content is self-contained, welcoming, and follows
- *   ethical design patterns (no dark patterns, clear messaging)
- * 
- * ✓ No Cross-Page Context: No assumptions about other pages or features
- * 
- * ✓ Deterministic: Consistent display and behavior
- * 
- * ============================================================================
- */
-
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Heart, Shield, Users, Sparkles } from 'lucide-react';
+import {
+    Heart, Shield, Users, Sparkles, ArrowRight,
+    MessageCircle, BookOpen, Wind, BarChart3, CheckCircle2, Phone
+} from 'lucide-react';
 
+// ─── Feature Strip Data ───────────────────────────────────────────────────────
+const FEATURES = [
+    {
+        icon: MessageCircle,
+        title: 'Talk to an AI that actually listens',
+        description: 'No judgement. No wait times. An empathetic AI trained to understand emotion, distress, and the way people really talk—especially in India.',
+        color: 'bg-violet-50 text-violet-600',
+    },
+    {
+        icon: BookOpen,
+        title: 'Journal your thoughts privately',
+        description: 'A safe space to write freely. Your entries are encrypted, completely private, and analysed gently to help you understand your emotional state.',
+        color: 'bg-indigo-50 text-indigo-600',
+    },
+    {
+        icon: Wind,
+        title: 'Relax when everything feels like too much',
+        description: 'Guided breathing exercises, ambient sounds, and grounding techniques—right when you need them.',
+        color: 'bg-teal-50 text-teal-600',
+    },
+    {
+        icon: BarChart3,
+        title: 'Track your emotional wellbeing over time',
+        description: 'Understand your mood patterns and usage trends through a clean, clinical dashboard that shows you real progress.',
+        color: 'bg-fuchsia-50 text-fuchsia-600',
+    },
+];
+
+const TRUST_POINTS = [
+    'All conversations are fully encrypted',
+    'Anonymous access—no personal details required',
+    'Crisis detection with helpline redirection (Tele MANAS 14416)',
+    'AI support, not a replacement for professional therapy',
+    'Designed for Indian users in 8 languages',
+];
+
+const LANGUAGES = ['English', 'हिंदी', 'தமிழ்', 'తెలుగు', 'ಕನ್ನಡ', 'മലയാളം', 'বাংলা', 'मराठी'];
+
+// ─── Animation Variants ───────────────────────────────────────────────────────
+const fadeUp = {
+    hidden: { opacity: 0, y: 24 },
+    show: (i = 0) => ({ opacity: 1, y: 0, transition: { delay: i * 0.1, duration: 0.5 } }),
+};
+
+// ─── Component ────────────────────────────────────────────────────────────────
 function LandingPage() {
     const navigate = useNavigate();
 
-    const benefits = [
-        {
-            icon: Heart,
-            title: 'Empathetic Support',
-            description: 'AI-powered conversations that listen without judgment, available 24/7 in your language.',
-            color: 'from-secondary-500 to-secondary-600'
-        },
-        {
-            icon: Shield,
-            title: 'Privacy First',
-            description: 'Your conversations are encrypted and private. Anonymous access available.',
-            color: 'from-primary-500 to-primary-600'
-        },
-        {
-            icon: Users,
-            title: 'Culturally Aware',
-            description: 'Designed for Indian users with support for 8 languages and cultural understanding.',
-            color: 'from-accent-focus to-secondary-500'
-        }
-    ];
-
     return (
-        <div className="min-h-screen bg-gradient-to-br from-primary-50 via-surface-primary to-primary-100 relative overflow-hidden">
-            {/* Animated background blobs */}
-            <div className="absolute inset-0 overflow-hidden pointer-events-none">
-                <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-primary-200/20 rounded-full blur-3xl animate-blob"></div>
-                <div className="absolute top-1/3 right-1/4 w-96 h-96 bg-secondary-200/20 rounded-full blur-3xl animate-blob animation-delay-2000"></div>
-                <div className="absolute bottom-1/4 left-1/3 w-96 h-96 bg-primary-300/20 rounded-full blur-3xl animate-blob animation-delay-4000"></div>
-            </div>
+        <div className="min-h-screen bg-white text-gray-900 overflow-x-hidden">
+            {/* ── Dot Grid Background ─────────────────────────── */}
+            <div
+                className="fixed inset-0 pointer-events-none z-0"
+                style={{
+                    backgroundImage: `
+                        linear-gradient(to right, rgba(148,163,184,0.12) 1px, transparent 1px),
+                        linear-gradient(to bottom, rgba(148,163,184,0.12) 1px, transparent 1px)
+                    `,
+                    backgroundSize: '44px 44px',
+                    maskImage: 'radial-gradient(ellipse 80% 60% at 50% 0%, black 40%, transparent 100%)',
+                    WebkitMaskImage: 'radial-gradient(ellipse 80% 60% at 50% 0%, black 40%, transparent 100%)'
+                }}
+            />
 
-            <div className="relative z-10">
-                {/* Header */}
-                <header className="px-6 py-6">
-                    <div className="max-w-7xl mx-auto flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                            <div className="w-12 h-12 bg-gradient-to-br from-primary-600 to-primary-700 rounded-2xl flex items-center justify-center">
-                                <Sparkles className="w-7 h-7 text-white" />
-                            </div>
-                            <h1 className="text-2xl font-bold text-gray-800">Care Nest</h1>
+            {/* ── Navbar ──────────────────────────────────────────────────── */}
+            <header className="sticky top-0 z-50 bg-white/90 backdrop-blur-md border-b border-gray-100 px-6 py-4">
+                <div className="max-w-6xl mx-auto flex items-center justify-between">
+                    <div className="flex items-center gap-2.5">
+                        <div className="w-9 h-9 bg-gradient-to-br from-violet-600 to-fuchsia-600 rounded-xl flex items-center justify-center shadow-sm">
+                            <Sparkles className="w-5 h-5 text-white" />
                         </div>
-                        <div className="flex items-center gap-3">
-                            <button
-                                onClick={() => navigate('/signin')}
-                                className="px-6 py-2 text-primary-700 font-medium hover:bg-primary-50 rounded-xl transition-colors"
-                            >
-                                Sign In
-                            </button>
-                            <button
-                                onClick={() => navigate('/signup')}
-                                className="px-6 py-2 bg-gradient-to-r from-primary-600 to-primary-700 text-white font-semibold rounded-xl hover:from-primary-700 hover:to-primary-800 transition-all shadow-lg"
-                            >
-                                Get Started
-                            </button>
-                        </div>
+                        <span className="text-lg font-bold tracking-tight text-gray-900">Care Nest</span>
                     </div>
-                </header>
-
-                {/* Hero Section */}
-                <section className="px-6 py-20 text-center">
-                    <div className="max-w-4xl mx-auto">
-                        <motion.div
-                            initial={{ opacity: 0, y: 20 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ duration: 0.6 }}
+                    <nav className="hidden md:flex items-center gap-6">
+                        <a href="#features" className="text-sm text-gray-500 hover:text-gray-900 transition-colors font-medium">Features</a>
+                        <a href="#trust" className="text-sm text-gray-500 hover:text-gray-900 transition-colors font-medium">Privacy</a>
+                        <a href="#languages" className="text-sm text-gray-500 hover:text-gray-900 transition-colors font-medium">Languages</a>
+                    </nav>
+                    <div className="flex items-center gap-3">
+                        <button
+                            onClick={() => navigate('/signin')}
+                            className="text-sm font-semibold text-gray-600 hover:text-gray-900 transition-colors"
                         >
-                            <h2 className="text-5xl md:text-6xl font-bold text-gray-900 mb-6 leading-tight">
-                                Your Safe Space for
-                                <span className="block bg-gradient-to-r from-primary-600 to-secondary-600 bg-clip-text text-transparent">
-                                    Mental Wellness
-                                </span>
-                            </h2>
-                            <p className="text-xl text-gray-600 mb-8 max-w-2xl mx-auto leading-relaxed">
-                                Care Nest provides empathetic, AI-powered mental health support designed for India.
-                                Available 24/7 in your language, completely private and judgment-free.
-                            </p>
-                            <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-                                <button
-                                    onClick={() => navigate('/signup')}
-                                    className="px-8 py-4 bg-gradient-to-r from-primary-600 to-secondary-600 text-white font-bold rounded-2xl hover:from-primary-700 hover:to-secondary-700 transition-all shadow-xl text-lg"
-                                >
-                                    Start Your Journey
-                                </button>
-                                <button
-                                    onClick={() => navigate('/signin')}
-                                    className="px-8 py-4 bg-white text-gray-800 font-semibold rounded-2xl hover:bg-gray-50 transition-all shadow-lg text-lg border border-gray-200"
-                                >
-                                    I Have an Account
-                                </button>
-                            </div>
-                        </motion.div>
-                    </div>
-                </section>
-
-                {/* Benefits Section */}
-                <section className="px-6 py-16">
-                    <div className="max-w-6xl mx-auto">
-                        <h3 className="text-3xl font-bold text-gray-900 text-center mb-12">
-                            Why Choose Care Nest?
-                        </h3>
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                            {benefits.map((benefit, index) => (
-                                <motion.div
-                                    key={index}
-                                    initial={{ opacity: 0, y: 20 }}
-                                    animate={{ opacity: 1, y: 0 }}
-                                    transition={{ delay: index * 0.2, duration: 0.5 }}
-                                    className="bg-white/80 backdrop-blur-lg rounded-2xl p-8 border border-gray-200 shadow-xl hover:shadow-2xl transition-shadow"
-                                >
-                                    <div className={`w-16 h-16 bg-gradient-to-br ${benefit.color} rounded-2xl flex items-center justify-center mb-6`}>
-                                        <benefit.icon className="w-8 h-8 text-white" />
-                                    </div>
-                                    <h4 className="text-xl font-bold text-gray-900 mb-3">{benefit.title}</h4>
-                                    <p className="text-gray-600 leading-relaxed">{benefit.description}</p>
-                                </motion.div>
-                            ))}
-                        </div>
-                    </div>
-                </section>
-
-                {/* Safety Section */}
-                <section className="px-6 py-16">
-                    <div className="max-w-4xl mx-auto">
-                        <div className="bg-primary-50 rounded-2xl p-8 border border-primary-200">
-                            <h3 className="text-2xl font-bold text-primary-900 mb-4 text-center">
-                                🔒 Your Safety & Privacy Matter
-                            </h3>
-                            <div className="space-y-3 text-primary-800">
-                                <p className="flex items-start gap-2">
-                                    <span className="text-primary-600 font-bold">•</span>
-                                    <span>All conversations are encrypted and private</span>
-                                </p>
-                                <p className="flex items-start gap-2">
-                                    <span className="text-primary-600 font-bold">•</span>
-                                    <span>Anonymous access available - no personal details required</span>
-                                </p>
-                                <p className="flex items-start gap-2">
-                                    <span className="text-primary-600 font-bold">•</span>
-                                    <span>Crisis detection with immediate helpline access (Tele MANAS 14416)</span>
-                                </p>
-                                <p className="flex items-start gap-2">
-                                    <span className="text-primary-600 font-bold">•</span>
-                                    <span>AI assistant, not a replacement for professional therapy</span>
-                                </p>
-                            </div>
-                        </div>
-                    </div>
-                </section>
-
-                {/* CTA Section */}
-                <section className="px-6 py-20 text-center">
-                    <div className="max-w-3xl mx-auto">
-                        <h3 className="text-4xl font-bold text-gray-900 mb-6">
-                            Ready to Take the First Step?
-                        </h3>
-                        <p className="text-xl text-gray-600 mb-8">
-                            Join thousands finding support and understanding with Care Nest.
-                        </p>
+                            Sign In
+                        </button>
                         <button
                             onClick={() => navigate('/signup')}
-                            className="px-10 py-5 bg-gradient-to-r from-primary-600 to-secondary-600 text-white font-bold rounded-2xl hover:from-primary-700 hover:to-secondary-700 transition-all shadow-2xl text-xl"
+                            className="px-4 py-2 bg-violet-600 hover:bg-violet-700 text-white text-sm font-bold rounded-xl transition-all shadow-sm"
                         >
-                            Get Started Free
+                            Get Started
                         </button>
                     </div>
-                </section>
+                </div>
+            </header>
 
-                {/* Footer */}
-                <footer className="px-6 py-8 border-t border-gray-200 bg-white/50 backdrop-blur-sm">
-                    <div className="max-w-7xl mx-auto text-center text-gray-600 text-sm">
-                        <p>© 2026 Care Nest. Empathetic mental health support for India.</p>
-                        <p className="mt-2">Available in English, Hindi, Tamil, Telugu, Kannada, Malayalam, Bengali, and Marathi.</p>
+            {/* ── Hero ────────────────────────────────────────────────────── */}
+            <section className="relative z-10 px-6 pt-24 pb-20 max-w-6xl mx-auto">
+                {/* Background gradient orbs */}
+                <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[700px] h-[500px] bg-gradient-to-b from-violet-100/60 to-transparent blur-3xl pointer-events-none rounded-full" />
+
+                <div className="relative text-center">
+                    <motion.div
+                        variants={fadeUp} initial="hidden" animate="show"
+                        className="inline-flex items-center gap-2 px-4 py-2 bg-violet-50 border border-violet-200 rounded-full text-violet-700 text-sm font-semibold mb-8"
+                    >
+                        <span className="w-2 h-2 rounded-full bg-violet-500 animate-pulse" />
+                        Available 24/7 · Free to use · Completely private
+                    </motion.div>
+
+                    <motion.h1
+                        variants={fadeUp} initial="hidden" animate="show" custom={1}
+                        className="text-5xl md:text-6xl lg:text-7xl font-bold tracking-tight text-gray-900 mb-6 leading-[1.08]"
+                    >
+                        Mental health support{' '}
+                        <span className="bg-gradient-to-r from-violet-600 to-fuchsia-500 bg-clip-text text-transparent">
+                            that understands you.
+                        </span>
+                    </motion.h1>
+
+                    <motion.p
+                        variants={fadeUp} initial="hidden" animate="show" custom={2}
+                        className="text-lg md:text-xl text-gray-500 max-w-2xl mx-auto mb-10 leading-relaxed"
+                    >
+                        Care Nest is an AI-powered mental wellness companion designed for India.
+                        Talk, journal, breathe, track—your way, in your language, on your terms.
+                    </motion.p>
+
+                    <motion.div
+                        variants={fadeUp} initial="hidden" animate="show" custom={3}
+                        className="flex flex-col sm:flex-row items-center justify-center gap-4"
+                    >
+                        <button
+                            onClick={() => navigate('/age-gate')}
+                            className="flex items-center gap-2 px-7 py-4 bg-violet-600 hover:bg-violet-700 text-white font-bold rounded-2xl transition-all shadow-lg shadow-violet-200 text-base"
+                        >
+                            Start for free
+                            <ArrowRight className="w-4 h-4" />
+                        </button>
+                        <button
+                            onClick={() => navigate('/signin')}
+                            className="px-7 py-4 bg-white border border-gray-200 hover:border-gray-300 text-gray-700 font-semibold rounded-2xl transition-all text-base shadow-sm hover:shadow"
+                        >
+                            I already have an account
+                        </button>
+                    </motion.div>
+
+                    {/* Emergency pull-quote */}
+                    <motion.div
+                        variants={fadeUp} initial="hidden" animate="show" custom={4}
+                        className="mt-10 inline-flex items-center gap-2 text-sm text-gray-400"
+                    >
+                        <Phone className="w-4 h-4 text-rose-400" />
+                        In crisis?  Call Tele MANAS <strong className="text-rose-500 font-bold">14416</strong> — free, 24/7, all Indian languages
+                    </motion.div>
+                </div>
+            </section>
+
+            {/* ── Feature Strip ────────────────────────────────────────────── */}
+            <section id="features" className="px-6 py-20 bg-gray-50/50">
+                <div className="max-w-6xl mx-auto">
+                    <div className="text-center mb-14">
+                        <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-3 tracking-tight">
+                            Everything you need in one place
+                        </h2>
+                        <p className="text-gray-500 text-base max-w-xl mx-auto">
+                            Built around how people in India actually experience stress—not a one-size-fits-all Western model.
+                        </p>
                     </div>
-                </footer>
-            </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        {FEATURES.map((f, i) => (
+                            <motion.div
+                                key={i}
+                                variants={fadeUp} initial="hidden" whileInView="show" viewport={{ once: true }} custom={i * 0.5}
+                                className="bg-white border border-gray-200 rounded-2xl p-7 hover:shadow-md transition-shadow flex gap-5"
+                            >
+                                <div className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 ${f.color}`}>
+                                    <f.icon className="w-6 h-6" />
+                                </div>
+                                <div>
+                                    <h3 className="text-base font-bold text-gray-900 mb-1.5">{f.title}</h3>
+                                    <p className="text-sm text-gray-500 leading-relaxed">{f.description}</p>
+                                </div>
+                            </motion.div>
+                        ))}
+                    </div>
+                </div>
+            </section>
+
+            {/* ── Trust & Privacy ──────────────────────────────────────────── */}
+            <section id="trust" className="px-6 py-20">
+                <div className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-14 items-center">
+                    <div>
+                        <span className="inline-block text-xs font-bold uppercase tracking-widest text-violet-500 mb-4">Privacy & Safety</span>
+                        <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-5 tracking-tight leading-snug">
+                            Your wellbeing data<br />belongs only to you.
+                        </h2>
+                        <p className="text-gray-500 text-base leading-relaxed mb-8">
+                            We designed Care Nest around a simple principle: you should be able to seek help without worrying about who's watching. Every interaction is private by design.
+                        </p>
+                        <button
+                            onClick={() => navigate('/age-gate', { state: { anonymous: true } })}
+                            className="flex items-center gap-2 px-6 py-3 bg-gray-900 hover:bg-gray-800 text-white text-sm font-bold rounded-xl transition-all"
+                        >
+                            Try it anonymously <ArrowRight className="w-4 h-4" />
+                        </button>
+                    </div>
+                    <div className="space-y-3">
+                        {TRUST_POINTS.map((point, i) => (
+                            <motion.div
+                                key={i}
+                                variants={fadeUp} initial="hidden" whileInView="show" viewport={{ once: true }} custom={i * 0.3}
+                                className="flex items-start gap-3 p-4 bg-gray-50 border border-gray-100 rounded-xl"
+                            >
+                                <CheckCircle2 className="w-5 h-5 text-emerald-500 shrink-0 mt-0.5" />
+                                <span className="text-sm text-gray-700 font-medium">{point}</span>
+                            </motion.div>
+                        ))}
+                    </div>
+                </div>
+            </section>
+
+            {/* ── Languages ────────────────────────────────────────────────── */}
+            <section id="languages" className="px-6 py-20 bg-gray-50/50">
+                <div className="max-w-4xl mx-auto text-center">
+                    <span className="inline-block text-xs font-bold uppercase tracking-widest text-violet-500 mb-4">Multilingual Support</span>
+                    <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4 tracking-tight">
+                        Talk in the language<br />you think in.
+                    </h2>
+                    <p className="text-gray-500 text-base mb-10 max-w-lg mx-auto">
+                        Mental health conversations are deeply personal. Care Nest works fluently in 8 Indian languages, including code-mixing like Hinglish.
+                    </p>
+                    <div className="flex flex-wrap justify-center gap-3">
+                        {LANGUAGES.map((lang, i) => (
+                            <motion.span
+                                key={lang}
+                                variants={fadeUp} initial="hidden" whileInView="show" viewport={{ once: true }} custom={i * 0.1}
+                                className="px-5 py-2.5 bg-white border border-gray-200 rounded-full text-sm font-semibold text-gray-700 shadow-sm"
+                            >
+                                {lang}
+                            </motion.span>
+                        ))}
+                    </div>
+                </div>
+            </section>
+
+            {/* ── Final CTA ────────────────────────────────────────────────── */}
+            <section className="px-6 py-24">
+                <motion.div
+                    variants={fadeUp} initial="hidden" whileInView="show" viewport={{ once: true }}
+                    className="max-w-3xl mx-auto text-center bg-gradient-to-br from-violet-600 to-fuchsia-600 rounded-3xl p-12 shadow-2xl shadow-violet-200"
+                >
+                    <h2 className="text-3xl md:text-4xl font-bold text-white mb-4 leading-snug">
+                        You don't have to wait<br />until you're in crisis.
+                    </h2>
+                    <p className="text-violet-100 text-base mb-8 max-w-md mx-auto">
+                        Start checking in now. Five minutes a day of honest self-reflection can change how you understand yourself.
+                    </p>
+                    <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+                        <button
+                            onClick={() => navigate('/signup')}
+                            className="px-7 py-3.5 bg-white text-violet-700 font-bold rounded-xl hover:bg-violet-50 transition-all text-sm shadow-sm"
+                        >
+                            Create a free account
+                        </button>
+                        <button
+                            onClick={() => navigate('/signin')}
+                            className="px-7 py-3.5 bg-white/10 border border-white/20 text-white font-semibold rounded-xl hover:bg-white/20 transition-all text-sm"
+                        >
+                            Sign in
+                        </button>
+                    </div>
+                </motion.div>
+            </section>
+
+            {/* ── Footer ───────────────────────────────────────────────────── */}
+            <footer className="px-6 py-8 border-t border-gray-100">
+                <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
+                    <div className="flex items-center gap-2">
+                        <div className="w-7 h-7 bg-gradient-to-br from-violet-600 to-fuchsia-600 rounded-lg flex items-center justify-center">
+                            <Sparkles className="w-4 h-4 text-white" />
+                        </div>
+                        <span className="text-sm font-bold text-gray-700">Care Nest</span>
+                    </div>
+                    <p className="text-xs text-gray-400 text-center">
+                        © 2026 Care Nest · Empathetic mental health support for India · Not a substitute for professional therapy.
+                    </p>
+                    <div className="flex items-center gap-2 text-xs text-rose-500 font-semibold">
+                        <Phone className="w-3.5 h-3.5" />
+                        Crisis Line: 14416
+                    </div>
+                </div>
+            </footer>
+
         </div>
     );
 }

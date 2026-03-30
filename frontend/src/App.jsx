@@ -16,6 +16,7 @@ import AssessmentPage from './pages/AssessmentPage';
 import AnalyticsPage from './pages/AnalyticsPage';
 import AdminDashboard from './pages/AdminDashboard';
 import ResourcesPage from './pages/ResourcesPage';
+import TimeTracker from './components/TimeTracker';
 
 // Protected Route Component
 const ProtectedRoute = ({ children }) => {
@@ -26,6 +27,7 @@ const ProtectedRoute = ({ children }) => {
 function App() {
     return (
         <Router>
+            <TimeTracker />
             <Routes>
                 {/* Public Routes */}
                 <Route path="/" element={<LandingPage />} />

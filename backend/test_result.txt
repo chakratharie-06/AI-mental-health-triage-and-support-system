@@ -1,0 +1,4 @@
+[SUCCESS] Response received from Groq:
+--------------------------------------------------
+I'm so sorry to hear that you're feeling nervous about your exam, beta 😊. It's completely normal to feel that way, especially with all the pressure to perform well. Academic stress can be really overwhelming, and it's great that you're acknowledging your feelings. What's been going through your mind about this exam that's making you feel particularly anxious? 🤗
+--------------------------------------------------

@@ -3,7 +3,7 @@ import time
 from dotenv import load_dotenv
 from flask import Flask, request, jsonify
 from flask_cors import CORS
-from models import db, User, Conversation, MoodEntry, JournalEntry
+from models import db, User, Conversation, MoodEntry, JournalEntry, TimeLog
 from auth import generate_token, token_required
 from triage_engine import triage_engine, enhanced_triage_engine
 from resources import get_resources_by_state
@@ -23,7 +23,7 @@ app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'care-nest-secret-key-change-
 
 db.init_app(app)
 
-print("[INFO] Using OpenRouter AI engine (z-ai/glm-4.5-air:free)")
+print("[INFO] Using Groq AI engine (llama-3.3-70b-versatile)")
 
 # Create tables
 with app.app_context():
@@ -373,12 +373,92 @@ def get_analytics(user_id):
             'day': day_name,
             'mood': mood_score
         })
+        
+    # Generate weekly time spent trend (last 7 days)
+    time_logs = TimeLog.query.filter_by(user_id=user_id).all()
+    weekly_time_trend = []
+    total_time_spent = 0
+    for i in range(7):
+        day_date = today - timedelta(days=6-i)
+        day_name = days[day_date.weekday()]
+        day_time_logs = [t for t in time_logs if t.created_at.date() == day_date.date()]
+        day_minutes = sum(t.minutes for t in day_time_logs)
+        weekly_time_trend.append({
+            'day': day_name,
+            'minutes': day_minutes
+        })
+        total_time_spent += day_minutes
     
+    # Calculate Wellbeing Score (out of 10)
+    last_7_days_moods = [m for m in moods if (today - m.created_at).days <= 7]
+    wellbeing_score = 7.5  # Default
+    if last_7_days_moods:
+        avg_intensity = sum(m.intensity for m in last_7_days_moods) / len(last_7_days_moods)
+        wellbeing_score = round(10.0 - (avg_intensity * 0.4), 1)
+        if wellbeing_score > 10.0: wellbeing_score = 10.0
+        
+    # Calculate Current Streak
+    active_dates = set()
+    for m in moods: active_dates.add(m.created_at.date())
+    for c in conversations: active_dates.add(c.updated_at.date())
+    for j in JournalEntry.query.filter_by(user_id=user_id).all(): active_dates.add(j.created_at.date())
+    
+    active_dates_sorted = sorted(list(active_dates), reverse=True)
+    current_streak = 0
+    check_date = today.date()
+    
+    if check_date in active_dates_sorted:
+        current_streak = 1
+        active_dates_sorted.remove(check_date)
+        check_date -= timedelta(days=1)
+    elif check_date - timedelta(days=1) in active_dates_sorted:
+        check_date -= timedelta(days=1)
+        current_streak = 1
+        active_dates_sorted.remove(check_date)
+        check_date -= timedelta(days=1)
+        
+    for d in active_dates_sorted:
+        if d == check_date:
+            current_streak += 1
+            check_date -= timedelta(days=1)
+        else:
+            break
+
+    # Calculate Recent Activity
+    recent_activity = []
+    for m in MoodEntry.query.filter_by(user_id=user_id).order_by(MoodEntry.created_at.desc()).limit(3).all():
+        recent_activity.append({'type': 'mood', 'text': f'Logged mood: {m.mood.capitalize()}', 'time': m.created_at})
+    for j in JournalEntry.query.filter_by(user_id=user_id).order_by(JournalEntry.created_at.desc()).limit(3).all():
+        recent_activity.append({'type': 'journal', 'text': f'Wrote journal entry{": " + j.title if j.title else ""}', 'time': j.created_at})
+    for c in Conversation.query.filter_by(user_id=user_id).order_by(Conversation.updated_at.desc()).limit(3).all():
+        recent_activity.append({'type': 'chat', 'text': 'Completed AI chat session', 'time': c.updated_at})
+        
+    recent_activity.sort(key=lambda x: x['time'], reverse=True)
+    
+    def format_relative_time(dt):
+        diff = datetime.utcnow() - dt
+        if diff.days > 0: return f"{diff.days} day{'s' if diff.days > 1 else ''} ago"
+        hrs = diff.seconds // 3600
+        if hrs > 0: return f"{hrs} hour{'s' if hrs > 1 else ''} ago"
+        mins = diff.seconds // 60
+        if mins > 0: return f"{mins} min{'s' if mins > 1 else ''} ago"
+        return "Just now"
+
+    for act in recent_activity:
+        act['time'] = format_relative_time(act['time'])
+    
+    recent_activity = recent_activity[:5]
+
     return jsonify({
         'totalSessions': total_sessions,
         'averageMood': average_mood,
         'moodDistribution': mood_distribution,
-        'weeklyTrend': weekly_trend
+        'weeklyTrend': weekly_trend,
+        'weeklyTimeTrend': weekly_time_trend,
+        'totalTimeSpent': total_time_spent,
+        'currentStreak': current_streak,
+        'wellbeingScore': wellbeing_score,
+        'recentActivity': recent_activity
     })
 
 
@@ -393,15 +473,21 @@ def chat(user_id):
     if not user_message:
         return jsonify({'error': 'Message is required'}), 400
 
-    # ── 1. Load / create conversation ────────────────────────────────────────
-    conversation = Conversation.query.filter_by(user_id=user_id)\
-        .order_by(Conversation.updated_at.desc()).first()
-    if not conversation:
-        conversation = Conversation(user_id=user_id)
-        conversation.set_messages([])
-        db.session.add(conversation)
+    user = db.session.get(User, user_id)
+    is_anonymous = user and user.email.startswith('anon_')
 
-    history = conversation.get_messages()
+    # ── 1. Load / create conversation ────────────────────────────────────────
+    conversation = None
+    if is_anonymous:
+        history = data.get('conversationHistory', [])
+    else:
+        conversation = Conversation.query.filter_by(user_id=user_id)\
+            .order_by(Conversation.updated_at.desc()).first()
+        if not conversation:
+            conversation = Conversation(user_id=user_id)
+            conversation.set_messages([])
+            db.session.add(conversation)
+        history = conversation.get_messages()
 
     # ── 2. Triage ─────────────────────────────────────────────────────────────
     emojis = triage_engine.extract_emojis(user_message)
@@ -419,7 +505,7 @@ def chat(user_id):
     detected_mood, mood_confidence, _ = triage_engine.detect_mood(user_message, emoji_context)
 
     # Auto-save mood entry when confidence is sufficient
-    if detected_mood and mood_confidence > 30:
+    if not is_anonymous and detected_mood and mood_confidence > 30:
         try:
             db.session.add(MoodEntry(user_id=user_id, mood=detected_mood, intensity=intensity))
         except Exception as e:
@@ -431,7 +517,8 @@ def chat(user_id):
     if len(recent_user_msgs) >= 2:
         past_intensities = []
         for m in recent_user_msgs:
-            _, _, past_i = triage_engine.analyze_severity(m.get('text', ''))
+            content = m.get('content') or m.get('text', '')
+            _, _, past_i = triage_engine.analyze_severity(content)
             past_intensities.append(past_i)
         past_intensities.append(intensity)
         if len(past_intensities) >= 3:
@@ -444,14 +531,21 @@ def chat(user_id):
             intensity = max(intensity, 8)
             distress_level = max(distress_level, 3)
 
-    # ── 5. Cultural context ───────────────────────────────────────────────────
+    # ── 5. Cultural Context & Mood Journey ────────────────────────────────────
     cultural_context = data.get('culturalContext', '')
     language = data.get('language', 'en-IN')
+    
+    past_moods_summary = ""
+    if not is_anonymous:
+        recent_moods = MoodEntry.query.filter_by(user_id=user_id).order_by(MoodEntry.created_at.desc()).limit(5).all()
+        if recent_moods:
+            past_moods_summary = ", ".join([f"{m.mood.capitalize()} ({m.intensity}/10)" for m in reversed(recent_moods)])
 
     # ── 6. Save user message ──────────────────────────────────────────────────
-    conversation.add_message('user', user_message)
+    if not is_anonymous and conversation:
+        conversation.add_message('user', user_message)
 
-    # ── 7. Generate AI response via OpenRouter ────────────────────────────────
+    # ── 7. Generate AI response via AI Engine ─────────────────────────────────
     ai_response = ai_generate_response(
         user_message=user_message,
         history=history,
@@ -460,11 +554,13 @@ def chat(user_id):
         language=language,
         cultural_context=cultural_context,
         is_escalating=is_escalating,
+        past_moods_summary=past_moods_summary,
     )
 
     # ── 8. Save AI message & commit ───────────────────────────────────────────
-    conversation.add_message('ai', ai_response, severity, distress_level)
-    db.session.commit()
+    if not is_anonymous and conversation:
+        conversation.add_message('ai', ai_response, severity, distress_level)
+        db.session.commit()
 
     return jsonify({
         'response': ai_response,
@@ -490,11 +586,39 @@ def log_mood(user_id):
     if not mood:
         return jsonify({'error': 'Mood is required'}), 400
         
+    user = db.session.get(User, user_id)
+    is_anonymous = user and user.email.startswith('anon_')
+    
+    if is_anonymous:
+        # Return success for redirect flow but don't persist to DB
+        return jsonify({
+            'message': 'Anonymous mood logged successfully (ephemeral)', 
+            'entry': {'mood': mood, 'intensity': intensity}
+        }), 201
+        
     try:
         entry = MoodEntry(user_id=user_id, mood=mood, intensity=intensity)
         db.session.add(entry)
         db.session.commit()
         return jsonify({'message': 'Mood logged successfully', 'entry': entry.to_dict()}), 201
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/time_log', methods=['POST'])
+@token_required
+def log_time(user_id):
+    data = request.json
+    minutes = data.get('minutes', 1)
+    
+    user = db.session.get(User, user_id)
+    if user and user.email.startswith('anon_'):
+        return jsonify({'message': 'Anonymous, not logging time'}), 200
+        
+    try:
+        entry = TimeLog(user_id=user_id, minutes=minutes)
+        db.session.add(entry)
+        db.session.commit()
+        return jsonify({'message': 'Time logged'}), 200
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
@@ -728,54 +852,43 @@ def delete_journal_entry(user_id, entry_id):
 
 @app.route('/api/admin/insights', methods=['GET'])
 def get_admin_insights():
-    # 1. Usage Trends (New Users over last 7 days)
-    # Simplified: Just returning total counts for MVP
     total_users = User.query.count()
     total_conversations = Conversation.query.count()
     
-    # 2. Distress Level Distribution (from Conversations)
-    # We need to iterate messages, but for performance let's look at recent messages in Conversations
-    # Or rely on MoodEntries which are structured
-    distress_counts = {'High (Red)': 0, 'Moderate (Yellow)': 0, 'Low (Green)': 0}
+    from datetime import datetime, date
+    today = datetime.utcnow().date()
+    # Simple active today count (distinct users who logged a mood today)
+    from sqlalchemy import func
+    active_today = db.session.query(MoodEntry.user_id).filter(func.date(MoodEntry.created_at) == today).distinct().count()
     
-    # Analyze Mood Entries for "Effectiveness" and "Distress"
+    distress_counts = [
+        {"level": "Low", "count": 0, "color": "bg-success-base"},
+        {"level": "Moderate", "count": 0, "color": "bg-warning-base"},
+        {"level": "High", "count": 0, "color": "bg-danger-base"}
+    ]
+    
     moods = MoodEntry.query.all()
     mood_breakdown = {}
     
     for m in moods:
-        # Distress Distribution based on Intensity
         if m.intensity >= 8:
-            distress_counts['High (Red)'] += 1
+            distress_counts[2]["count"] += 1
         elif m.intensity >= 4:
-            distress_counts['Moderate (Yellow)'] += 1
+            distress_counts[1]["count"] += 1
         else:
-            distress_counts['Low (Green)'] += 1
+            distress_counts[0]["count"] += 1
             
-        # Mood Breakdown
         mood_breakdown[m.mood] = mood_breakdown.get(m.mood, 0) + 1
 
-    # 3. Effectiveness (Avg Intensity Trend)
-    # Group by date
-    from sqlalchemy import func
-    daily_intensity = db.session.query(
-        func.date(MoodEntry.created_at), 
-        func.avg(MoodEntry.intensity)
-    ).group_by(func.date(MoodEntry.created_at)).all()
-    
-    effectiveness_trend = [{'date': str(day), 'avg_intensity': round(val, 1)} for day, val in daily_intensity]
+    top_moods = sorted([{"mood": k.capitalize(), "count": v} for k, v in mood_breakdown.items()], key=lambda x: x["count"], reverse=True)[:5]
 
     return jsonify({
-        'usage': {
-            'total_users': total_users,
-            'total_conversations': total_conversations
-        },
-        'distress_distribution': [
-            {'name': k, 'value': v} for k, v in distress_counts.items()
-        ],
-        'mood_breakdown': [
-            {'name': k, 'value': v} for k, v in mood_breakdown.items()
-        ],
-        'effectiveness_trend': effectiveness_trend
+        "totalUsers": total_users,
+        "activeToday": active_today,
+        "totalSessions": total_conversations,
+        "averageSessionLength": "12 min",  # Static/placeholder for now
+        "distressDistribution": distress_counts,
+        "topMoods": top_moods
     })
 
 # ============ ADMIN/DEBUG ROUTES ============

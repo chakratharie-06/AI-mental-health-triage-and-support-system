@@ -22,23 +22,22 @@ const DashboardPage = () => {
     const fetchDashboardData = async () => {
         try {
             const token = localStorage.getItem('token');
-            const response = await axios.get('http://localhost:5000/api/analytics', {
+            const response = await axios.get('/api/analytics', {
                 headers: { Authorization: `Bearer ${token}` }
             });
 
             setStats({
                 totalSessions: response.data.totalSessions || 0,
-                currentStreak: 3, // Mock data
-                wellbeingScore: 7.5, // Mock data
+                currentStreak: response.data.currentStreak || 0,
+                wellbeingScore: response.data.wellbeingScore || 7.5,
                 dominantMood: response.data.averageMood || 'Calm'
             });
 
-            // Mock recent activity
-            setRecentActivity([
-                { type: 'chat', text: 'Completed AI chat session', time: '2 hours ago' },
-                { type: 'mood', text: 'Logged mood: Happy', time: '5 hours ago' },
-                { type: 'journal', text: 'Wrote journal entry', time: '1 day ago' },
-            ]);
+            if (response.data.recentActivity && response.data.recentActivity.length > 0) {
+                setRecentActivity(response.data.recentActivity);
+            } else {
+                setRecentActivity([{ type: 'system', text: 'Welcome to Care Nest! Take a minute to check your wellbeing.', time: 'Just now' }]);
+            }
 
             setLoading(false);
         } catch (error) {

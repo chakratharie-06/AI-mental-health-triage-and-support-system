@@ -329,17 +329,26 @@ ${(distressLevel === "critical" || distressLevel === "high") ? `\nSAFETY: Mentio
                 systemPrompt,
                 conversationHistory: (history || [])
                     .filter(m => m.role !== "system")
-                    .map(m => ({ role: m.role === "assistant" ? "assistant" : "user", content: m.content })),
+                    .map(m => ({
+                        role: m.role === "assistant" ? "assistant" : "user",
+                        content: m.content || m.text || "",
+                    }))
+                    .filter(m => m.content),
             }),
         });
 
-        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        if (!response.ok) {
+            const errBody = await response.text();
+            console.error(`[Chat] HTTP ${response.status}:`, errBody);
+            throw new Error(`HTTP ${response.status}`);
+        }
         const data = await response.json();
         const reply = data.response || data.text || data.message || "";
         if (!reply) throw new Error("Empty response");
         return { text: reply, language: detectedLanguage };
     } catch (err) {
-        console.warn("Backend unavailable, using echo fallback:", err.message);
+        console.error("[Chat] Error:", err.message);
+        // Only use echo fallback — don't silently swallow
         return echoResponder({ detectedLanguage, distressLevel });
     }
 }
@@ -598,11 +607,50 @@ export default function ChatPage() {
     const [distressLevel, setDistressLevel] = useState("none");
     const [showCrisis, setShowCrisis] = useState(false);
 
+    // ── Sidebar state ─────────────────────────────────────────────
+    const [moodHistory, setMoodHistory] = useState([]);   // [{mood, level, ts}]
+    const [sessionSeverity, setSessionSeverity] = useState("none"); // worst seen this session
+    const [manualMood, setManualMood] = useState(null); // { label, emoji, level }
+
     const bottomRef = useRef(null);
     const textareaRef = useRef(null);
     const messagesRef = useRef(messages);
     const moodTriggerFired = useRef(false);
     useEffect(() => { messagesRef.current = messages; }, [messages]);
+
+    // ── Load Chat History ─────────────────────────────────────────
+    useEffect(() => {
+        const fetchHistory = async () => {
+            try {
+                const token = localStorage.getItem('token');
+                if (!token) return;
+                const response = await fetch('/api/conversations', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                if (!response.ok) return;
+                const data = await response.json();
+                const convs = data.conversations || [];
+                if (convs.length > 0) {
+                    const recentConv = convs[0];
+                    const msgs = recentConv.messages;
+                    if (msgs && msgs.length > 0) {
+                        const formatted = msgs.map(m => ({
+                            id: `hist_${Math.random()}`,
+                            role: m.role === 'ai' ? 'assistant' : m.role,
+                            content: m.text || m.content || '',
+                            timestamp: m.timestamp ? new Date(m.timestamp).getTime() : Date.now(),
+                            distressLevel: m.distress_level
+                        }));
+                        setMessages([WELCOME, ...formatted]);
+                    }
+                }
+            } catch (err) {
+                console.error("Error loading chat history:", err);
+            }
+        };
+        fetchHistory();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
 
     const { analyze } = useDistressDetector({
         onDistressAlert: useCallback((evt) => {
@@ -632,7 +680,14 @@ export default function ChatPage() {
         if (!state?.fromMood || moodTriggerFired.current) return;
         moodTriggerFired.current = true;
 
-        const { moodEmoji, moodLabel, intensity, notes } = state;
+        const { moodEmoji, moodLabel, intensity, notes, mood } = state;
+
+        let initialLevel = "none";
+        if (mood === "very_sad" || intensity >= 8) initialLevel = "high";
+        else if (mood === "sad" || intensity >= 6) initialLevel = "medium";
+        else if (mood === "neutral" || intensity >= 4) initialLevel = "low";
+
+        setManualMood({ label: moodLabel, emoji: moodEmoji, level: initialLevel });
 
         // Build a natural message that represents what the user logged
         let autoMessage = `I just logged my mood as ${moodEmoji} ${moodLabel} with an intensity of ${intensity}/10.`;
@@ -652,6 +707,16 @@ export default function ChatPage() {
         if (!trimmed || loading) return;
         const { level } = analyze(trimmed);
         const ctx = detectCulturalContext(trimmed);
+
+        // ── Update mood history & session severity ────────────────
+        if (level !== "none") {
+            setMoodHistory(prev => [...prev.slice(-19), { level, ts: Date.now() }]);
+            setSessionSeverity(prev => {
+                const order = ["none", "low", "medium", "high", "critical"];
+                return order.indexOf(level) > order.indexOf(prev) ? level : prev;
+            });
+        }
+
         const userMsg = {
             id: makeId(), role: "user", content: trimmed,
             language: lang, timestamp: Date.now(), distressLevel: level,
@@ -700,25 +765,44 @@ export default function ChatPage() {
 
     const crisisLine = CRISIS_LINES[lang] ?? CRISIS_LINES["en-IN"];
 
+    // ── Derived sidebar data ──────────────────────────────────────
+    const MOOD_META = {
+        critical: { label: "Crisis",      emoji: "🆘", color: "#ef4444", bg: "#fef2f2", border: "#fca5a5" },
+        high:     { label: "High Distress", emoji: "😔", color: "#f97316", bg: "#fff7ed", border: "#fdba74" },
+        medium:   { label: "Moderate",    emoji: "😟", color: "#eab308", bg: "#fefce8", border: "#fde047" },
+        low:      { label: "Mild Stress", emoji: "😐", color: "#3b82f6", bg: "#eff6ff", border: "#93c5fd" },
+        none:     { label: "Calm",        emoji: "😊", color: "#22c55e", bg: "#f0fdf4", border: "#86efac" },
+    };
+
+    const dominantLevel = moodHistory.length === 0 ? (manualMood ? manualMood.level : "none")
+        : Object.entries(
+            moodHistory.reduce((acc, { level }) => { acc[level] = (acc[level] || 0) + 1; return acc; }, {})
+          ).sort((a, b) => b[1] - a[1])[0][0];
+
+    let dominantMeta = MOOD_META[dominantLevel] ?? MOOD_META.none;
+    if (manualMood && dominantLevel === manualMood.level) {
+        dominantMeta = { ...dominantMeta, label: manualMood.label, emoji: manualMood.emoji };
+    }
+    const showCrisisPanel = sessionSeverity === "critical" || sessionSeverity === "high";
+
     return (
         <div style={{
             display: "flex", flexDirection: "column", height: "100vh",
             background: "var(--bg-page)", fontFamily: "Georgia,'Times New Roman',serif", overflow: "hidden"
         }}>
-
             <style>{`
         @keyframes cn-fade-up    { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
         @keyframes cn-bounce     { 0%,80%,100%{transform:translateY(0)} 40%{transform:translateY(-5px)} }
         @keyframes cn-pulse      { 0%{opacity:.8;transform:scale(1)} 100%{opacity:0;transform:scale(1.55)} }
         @keyframes cn-slide-down { from{opacity:0;transform:translateY(-6px)} to{opacity:1;transform:translateY(0)} }
         @keyframes cn-spin       { to{transform:rotate(360deg)} }
+        @keyframes cn-pop        { 0%{transform:scale(0.85);opacity:0} 100%{transform:scale(1);opacity:1} }
         ::-webkit-scrollbar{width:4px}
         ::-webkit-scrollbar-thumb{background:#C8E0E0;border-radius:4px}
         button:focus-visible{outline:2px solid var(--primary-500);outline-offset:2px}
         textarea:focus{outline:none}
       `}</style>
 
-            {/* NAVBAR — shared navigation across all pages */}
             <Navbar />
 
             {/* SAFETY STRIP */}
@@ -735,15 +819,15 @@ export default function ChatPage() {
                 </span>
             </div>
 
-            {/* CHAT AREA */}
-            <div style={{ flex: 1, display: "flex", justifyContent: "center", padding: "12px 12px 0", minHeight: 0 }}>
-                <div style={{
-                    width: "100%", maxWidth: 720, background: "#fff",
-                    borderRadius: "20px 20px 0 0",
-                    boxShadow: "0 -4px 40px rgba(0,0,0,0.06)",
-                    display: "flex", flexDirection: "column", overflow: "hidden"
-                }}>
+            {/* MAIN BODY — chat + sidebar */}
+            <div style={{ flex: 1, display: "flex", gap: 12, padding: "12px 12px 0", minHeight: 0, overflow: "hidden" }}>
 
+                {/* ── CHAT PANEL ── */}
+                <div style={{
+                    flex: 1, background: "#fff", borderRadius: "20px 20px 0 0",
+                    boxShadow: "0 -4px 40px rgba(0,0,0,0.06)",
+                    display: "flex", flexDirection: "column", overflow: "hidden", minWidth: 0
+                }}>
                     {showCrisis && <CrisisBanner lang={lang} onDismiss={() => setShowCrisis(false)} />}
 
                     {/* Messages */}
@@ -761,9 +845,7 @@ export default function ChatPage() {
                         padding: "10px 12px 6px", borderTop: "1px solid var(--border-light)",
                         background: "#fff", display: "flex", alignItems: "flex-end", gap: 7
                     }}>
-
                         <LangSelector value={lang} onChange={handleLangChange} />
-
                         <textarea ref={textareaRef} value={input}
                             onChange={e => {
                                 setInput(e.target.value);
@@ -782,9 +864,7 @@ export default function ChatPage() {
                             onFocus={e => e.target.style.borderColor = "var(--primary-500)"}
                             onBlur={e => e.target.style.borderColor = "var(--primary-200)"}
                         />
-
                         <VoiceNoteButton onTranscript={handleVoiceTranscript} preferredLang={lang} disabled={loading} />
-
                         <button type="button" onClick={() => handleSend(input)}
                             disabled={!input.trim() || loading} aria-label="Send"
                             style={{
@@ -802,13 +882,122 @@ export default function ChatPage() {
                             }
                         </button>
                     </div>
-
                     <p style={{
                         fontSize: 10, color: "var(--text-secondary)", textAlign: "center",
                         margin: 0, padding: "5px 0 10px", fontFamily: "system-ui,sans-serif", background: "#fff"
                     }}>
                         Not a substitute for professional care · Crisis? {crisisLine.line.split("|")[0].trim()}
                     </p>
+                </div>
+
+                {/* ── RIGHT SIDEBAR ── */}
+                <div style={{
+                    width: 220, display: "flex", flexDirection: "column", gap: 12,
+                    flexShrink: 0, paddingBottom: 12,
+                }}>
+
+                    {/* DOMINANT MOOD BOX */}
+                    <div style={{
+                        background: dominantMeta.bg,
+                        border: `1.5px solid ${dominantMeta.border}`,
+                        borderRadius: 18, padding: "18px 16px",
+                        boxShadow: "0 2px 12px rgba(0,0,0,0.06)",
+                        animation: "cn-pop 0.3s ease",
+                        fontFamily: "system-ui,sans-serif",
+                    }}>
+                        <p style={{ fontSize: 11, fontWeight: 700, color: dominantMeta.color, textTransform: "uppercase", letterSpacing: "0.7px", margin: "0 0 10px" }}>
+                            Dominant Mood
+                        </p>
+                        <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
+                            <span style={{ fontSize: 36 }}>{dominantMeta.emoji}</span>
+                            <span style={{ fontSize: 16, fontWeight: 700, color: dominantMeta.color }}>
+                                {dominantMeta.label}
+                            </span>
+                        </div>
+
+                        {/* Mini mood timeline — last 10 messages */}
+                        {moodHistory.length > 0 && (
+                            <div>
+                                <p style={{ fontSize: 10, color: "#888", margin: "0 0 5px" }}>Session trend</p>
+                                <div style={{ display: "flex", gap: 3, flexWrap: "wrap" }}>
+                                    {moodHistory.slice(-10).map((m, i) => (
+                                        <span key={i} title={MOOD_META[m.level]?.label} style={{
+                                            width: 10, height: 10, borderRadius: "50%",
+                                            background: MOOD_META[m.level]?.color ?? "#ccc",
+                                            display: "inline-block",
+                                        }} />
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+
+                        {moodHistory.length === 0 && (
+                            <p style={{ fontSize: 11, color: "#aaa", margin: 0, lineHeight: 1.5 }}>
+                                Start chatting — I'll track your mood as we talk.
+                            </p>
+                        )}
+                    </div>
+
+                    {/* CRISIS HELPLINE BOX — shown when high/critical distress detected */}
+                    {showCrisisPanel && (
+                        <div style={{
+                            background: "#fef2f2",
+                            border: "1.5px solid #fca5a5",
+                            borderRadius: 18, padding: "16px",
+                            boxShadow: "0 2px 12px rgba(239,68,68,0.12)",
+                            animation: "cn-pop 0.35s ease",
+                            fontFamily: "system-ui,sans-serif",
+                        }}>
+                            <p style={{ fontSize: 11, fontWeight: 700, color: "#ef4444", textTransform: "uppercase", letterSpacing: "0.7px", margin: "0 0 10px" }}>
+                                🆘 Crisis Support
+                            </p>
+                            <p style={{ fontSize: 12, color: "#7f1d1d", margin: "0 0 12px", lineHeight: 1.5 }}>
+                                You're not alone. Reach out right now — it's free and confidential.
+                            </p>
+                            {crisisLine.line.split("|").map((line, i) => (
+                                <div key={i} style={{
+                                    background: "#fff", borderRadius: 10, padding: "8px 10px",
+                                    marginBottom: 6, border: "1px solid #fecaca",
+                                }}>
+                                    <p style={{ margin: 0, fontSize: 12, fontWeight: 700, color: "#dc2626" }}>
+                                        📞 {line.trim()}
+                                    </p>
+                                </div>
+                            ))}
+                            <p style={{ fontSize: 10, color: "#ef4444", margin: "8px 0 0", opacity: 0.8 }}>
+                                {crisisLine.note}
+                            </p>
+                        </div>
+                    )}
+
+                    {/* CALM STATE — shown when no crisis */}
+                    {!showCrisisPanel && (
+                        <div style={{
+                            background: "#f0fdf4",
+                            border: "1.5px solid #86efac",
+                            borderRadius: 18, padding: "16px",
+                            fontFamily: "system-ui,sans-serif",
+                        }}>
+                            <p style={{ fontSize: 11, fontWeight: 700, color: "#16a34a", textTransform: "uppercase", letterSpacing: "0.7px", margin: "0 0 8px" }}>
+                                📞 Helplines
+                            </p>
+                            <p style={{ fontSize: 11, color: "#166534", margin: "0 0 10px", lineHeight: 1.5 }}>
+                                Always here if you need them.
+                            </p>
+                            <div style={{ background: "#fff", borderRadius: 10, padding: "8px 10px", border: "1px solid #bbf7d0" }}>
+                                <p style={{ margin: 0, fontSize: 11, fontWeight: 600, color: "#15803d" }}>
+                                    Kiran: 1800-599-0019
+                                </p>
+                                <p style={{ margin: "3px 0 0", fontSize: 10, color: "#4ade80" }}>24/7 · Free</p>
+                            </div>
+                            <div style={{ background: "#fff", borderRadius: 10, padding: "8px 10px", border: "1px solid #bbf7d0", marginTop: 6 }}>
+                                <p style={{ margin: 0, fontSize: 11, fontWeight: 600, color: "#15803d" }}>
+                                    iCall: 9152987821
+                                </p>
+                                <p style={{ margin: "3px 0 0", fontSize: 10, color: "#4ade80" }}>Mon–Sat, 10am–8pm</p>
+                            </div>
+                        </div>
+                    )}
                 </div>
             </div>
         </div>
