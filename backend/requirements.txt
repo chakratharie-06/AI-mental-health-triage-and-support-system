@@ -4,3 +4,4 @@ flask-sqlalchemy
 openai
 python-dotenv
 pyjwt
+gunicorn

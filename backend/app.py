@@ -17,8 +17,14 @@ app = Flask(__name__)
 CORS(app)
 
 # Database Configuration
+# Locally: SQLite. In production (Render/Railway): set DATABASE_URL env var to PostgreSQL URI.
 basedir = os.path.abspath(os.path.dirname(__file__))
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(basedir, 'care_nest_v2.db')
+_default_db = 'sqlite:///' + os.path.join(basedir, 'care_nest_v2.db')
+_database_url = os.getenv('DATABASE_URL', _default_db)
+# Render returns postgres:// but SQLAlchemy requires postgresql://
+if _database_url.startswith('postgres://'):
+    _database_url = _database_url.replace('postgres://', 'postgresql://', 1)
+app.config['SQLALCHEMY_DATABASE_URI'] = _database_url
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'care-nest-secret-key-change-in-production')
 
