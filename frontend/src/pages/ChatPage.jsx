@@ -1,6 +1,11 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useLocation } from "react-router-dom";
+import CrisisModal from '../components/crisis/CrisisModal';
+import FeedbackWidget from '../components/feedback/FeedbackWidget';
 import Navbar from '../components/Navbar';
+import { useAuth } from '../context/AuthContext';
+import { useLanguage } from '../context/LanguageContext';
+import OverthinkingBreaker from '../components/chat/OverthinkingBreaker';
 
 /* ═══════════════════════════════════════════════════════════════════
    1.  DISTRESS RULES  —  English + all 12 Indian regional languages
@@ -291,7 +296,7 @@ INDIAN CULTURAL CONTEXT — respond with deep sensitivity to:
 
 10. GRIEF: Be aware of Indian mourning rituals (shraddh, 40-day periods) that may compound grief.`;
 
-async function backendResponder({ text, detectedLanguage, distressLevel, history, culturalContext }) {
+async function backendResponder({ text, detectedLanguage, distressLevel, history, culturalContext, actionInstruction }) {
     const langName = LANG_NAMES[detectedLanguage] ?? "the same language as the user";
     const cl = CRISIS_LINES[detectedLanguage] ?? CRISIS_LINES["en-IN"];
     const culturalFlags = Object.entries(culturalContext || {}).filter(([, v]) => v).map(([k]) => k).join(", ");
@@ -303,6 +308,8 @@ DISTRESS LEVEL: ${distressLevel}
 CULTURAL CONTEXT DETECTED: ${culturalFlags || "general"}
 
 ${CULTURAL_CONTEXT_PROMPT}
+
+${actionInstruction ? `\n[IMMEDIATE OVERRIDE INSTRUCTION FOR THIS TURN]:\nALWAYS OBEY THE FOLLOWING CONTEXT-TRIGGER INSTRUCTION FOR THIS SPECIFIC MESSAGE:\n${actionInstruction}\n` : ""}
 
 RESPONSE GUIDELINES:
 - 2–4 sentences + one gentle question
@@ -593,17 +600,46 @@ function CrisisBanner({ lang, onDismiss }) {
 /* ═══════════════════════════════════════════════════════════════════
    9.  ROOT COMPONENT  (exported as ChatPage)
 ═══════════════════════════════════════════════════════════════════ */
-const WELCOME = {
-    id: "sys_welcome", role: "assistant", language: "en-IN", timestamp: Date.now(),
-    content: "Hi! I'm Care Nest — your AI mental-health companion. 💙\n\nI'm here to listen without judgment, in your language. Use the language selector (bottom-left) to switch to any Indian regional language — I'll understand and respond in the same language and style.\n\nHow has your day been?",
+const AGE_PERSONAS = {
+    "18-25": {
+        name: "Mental Coach",
+        emoji: "🎓",
+        welcomeMsg: "Hi! I'm your Mental Coach 💙\n\nI'm here to support you through academic stress, career decisions, and everyday overthinking. Take a deep breath. Use the language selector below if you prefer a regional language.\n\nHow has your focus been today?",
+    },
+    "25-35": {
+        name: "Work-Life Coach",
+        emoji: "💼",
+        welcomeMsg: "Hi! I'm your Work-Life Coach 💙\n\nI'm here to help you manage work stress, navigate relationships, and prevent burnout. Use the language selector below if you prefer a regional language.\n\nWhat part of your day felt the most draining?",
+    },
+    "35-45": {
+        name: "Life Load Balancer",
+        emoji: "🏡",
+        welcomeMsg: "Hi! I'm your Life Load Balancer 💙\n\nI'm here to support you as you juggle family, work, and personal time. You carry a lot. Use the language selector below if you prefer a regional language.\n\nOn a scale of 1-10, how heavy does life feel today?",
+    },
+    "45+": {
+        name: "Wisdom Companion",
+        emoji: "🌿",
+        welcomeMsg: "Hi! I'm your Wisdom Companion 💙\n\nI'm here to listen, simplify decisions, and reflect on what matters most. Use the language selector below if you prefer a regional language.\n\nWhat has been on your mind lately?",
+    }
 };
+
+const GENERIC_WELCOME = "Hi! I'm Care Nest — your AI mental-health companion. 💙\n\nI'm here to listen without judgment, in your language. Use the language selector (bottom-left) to switch to any Indian regional language.\n\nHow has your day been?";
 
 export default function ChatPage() {
     const location = useLocation();
-    const [messages, setMessages] = useState([WELCOME]);
+    const { user } = useAuth();
+
+    // Determine initial welcome message based on age_group
+    const persona = user?.age_group ? AGE_PERSONAS[user.age_group] : null;
+    const initialWelcome = {
+        id: "sys_welcome", role: "assistant", language: "en-IN", timestamp: Date.now(),
+        content: persona ? persona.welcomeMsg : GENERIC_WELCOME,
+    };
+
+    const [messages, setMessages] = useState([initialWelcome]);
     const [input, setInput] = useState("");
     const [loading, setLoading] = useState(false);
-    const [lang, setLang] = useState("en-IN");
+    const { language: lang, changeLanguage: setLang } = useLanguage();
     const [distressLevel, setDistressLevel] = useState("none");
     const [showCrisis, setShowCrisis] = useState(false);
 
@@ -641,7 +677,7 @@ export default function ChatPage() {
                             timestamp: m.timestamp ? new Date(m.timestamp).getTime() : Date.now(),
                             distressLevel: m.distress_level
                         }));
-                        setMessages([WELCOME, ...formatted]);
+                        setMessages([initialWelcome, ...formatted]);
                     }
                 }
             } catch (err) {
@@ -702,7 +738,7 @@ export default function ChatPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [location.state]);
 
-    const handleSend = useCallback(async (text) => {
+    const handleSend = useCallback(async (text, actionInstruction = "") => {
         const trimmed = text.trim();
         if (!trimmed || loading) return;
         const { level } = analyze(trimmed);
@@ -730,6 +766,7 @@ export default function ChatPage() {
             const reply = await backendResponder({
                 text: trimmed, detectedLanguage: lang,
                 distressLevel: level, history: histSnap, culturalContext: ctx,
+                actionInstruction
             });
             setMessages(prev => [...prev, {
                 id: makeId(), role: "assistant",
@@ -784,6 +821,56 @@ export default function ChatPage() {
         dominantMeta = { ...dominantMeta, label: manualMood.label, emoji: manualMood.emoji };
     }
     const showCrisisPanel = sessionSeverity === "critical" || sessionSeverity === "high";
+
+    const QuickSupportPanel = ({ ageGroup, onTrigger }) => {
+        const triggers = {
+            "18-25": [
+                { label: "Overthinking Breaker", icon: "🧠", text: "I'm overthinking right now.", instruction: "The user clicked 'Overthinking Breaker'. Validate their feeling, then immediately guide them through a 5-4-3-2-1 grounding exercise or something similar before asking them to explain the issue." },
+                { label: "Exam Panic", icon: "🚨", text: "I'm having a panic attack about my exams/studies.", instruction: "The user clicked 'Exam Panic'. Shift to high-empathy, acute stress crisis mode. Give them one tiny, actionable grounding step. Remind them their worth is not tied to academics." }
+            ],
+            "25-35": [
+                { label: "Burnout Check", icon: "🔋", text: "I'm feeling completely burnt out and exhausted.", instruction: "The user clicked 'Burnout Check'. Acknowledge their exhaustion with deep empathy. Ask them 2 simple questions to assess their boundary slippage and energy drain." },
+                { label: "Set a Boundary", icon: "🛑", text: "I need help setting a boundary at work/home.", instruction: "The user clicked 'Set a boundary'. Offer to help them draft a polite, firm, and professional message or script to protect their time and energy." }
+            ],
+            "35-45": [
+                { label: "Life-Load Overwhelm", icon: "⚖️", text: "I have too much to do and feel completely overwhelmed.", instruction: "The user clicked 'Life-Load Overwhelm'. Do not give toxic positivity. Help them categorize their to-do list into 'must do', 'can delegate', and 'can drop'." },
+                { label: "Family Stress", icon: "👨‍👩‍👧", text: "I'm dealing with serious family stress right now.", instruction: "The user clicked 'Family Stress'. Provide immediate de-escalation strategies and validate the heavy burden of being the anchor for a family." }
+            ],
+            "45+": [
+                { label: "Decision Simplifier", icon: "🛤️", text: "I need help making a difficult decision.", instruction: "The user clicked 'Decision Simplifier'. Guide them through a simple decision-making matrix (e.g. 10-10-10 rule or worst-case scenario analysis)." },
+                { label: "Life Reflection", icon: "📖", text: "I'm reflecting on my life and need someone to listen.", instruction: "The user clicked 'Life Reflection'. Shift into 'Wisdom Companion' mode. Ask thought-provoking, gentle questions about their past resilience and what brings them meaning." }
+            ]
+        };
+
+        const list = triggers[ageGroup] || [];
+        if (!list.length) return null;
+
+        return (
+            <div style={{
+                display: "flex", gap: 10, overflowX: "auto", padding: "10px 18px",
+                borderTop: "1px solid var(--border-light)", background: "var(--surface-secondary)",
+                scrollbarWidth: "none"
+            }}>
+                {list.map((item, i) => (
+                    <button key={i} onClick={() => onTrigger(item.text, item.instruction)}
+                        disabled={loading}
+                        style={{
+                            display: "flex", alignItems: "center", gap: 6, padding: "6px 14px",
+                            borderRadius: 20, border: "1.5px solid var(--primary-200)", background: "#fff",
+                            fontSize: 13, fontWeight: 700, color: "var(--primary-700)", flexShrink: 0,
+                            cursor: loading ? "default" : "pointer", opacity: loading ? 0.6 : 1,
+                            boxShadow: "0 2px 6px rgba(0,0,0,0.03)", transition: "all 0.2s",
+                            fontFamily: "system-ui,sans-serif"
+                        }}
+                        onMouseEnter={e => { if (!loading) { e.currentTarget.style.borderColor = "var(--primary-500)"; e.currentTarget.style.boxShadow = "0 4px 10px rgba(0,0,0,0.06)"; } }}
+                        onMouseLeave={e => { if (!loading) { e.currentTarget.style.borderColor = "var(--primary-200)"; e.currentTarget.style.boxShadow = "0 2px 6px rgba(0,0,0,0.03)"; } }}
+                    >
+                        <span style={{ fontSize: 16 }}>{item.icon}</span> {item.label}
+                    </button>
+                ))}
+            </div>
+        );
+    };
 
     return (
         <div style={{
@@ -840,6 +927,9 @@ export default function ChatPage() {
                         <div ref={bottomRef} />
                     </div>
 
+                    {/* QUICK SUPPORT PANEL */}
+                    <QuickSupportPanel ageGroup={user?.age_group} onTrigger={handleSend} />
+
                     {/* INPUT BAR */}
                     <div style={{
                         padding: "10px 12px 6px", borderTop: "1px solid var(--border-light)",
@@ -895,6 +985,10 @@ export default function ChatPage() {
                     width: 220, display: "flex", flexDirection: "column", gap: 12,
                     flexShrink: 0, paddingBottom: 12,
                 }}>
+                    
+                    {user?.age_group === '18-25' && (
+                        <OverthinkingBreaker onInvokeChat={handleSend} />
+                    )}
 
                     {/* DOMINANT MOOD BOX */}
                     <div style={{
@@ -1000,6 +1094,9 @@ export default function ChatPage() {
                     )}
                 </div>
             </div>
+
+            <CrisisModal isOpen={showCrisis} onClose={() => setShowCrisis(false)} />
+            <FeedbackWidget onSubmit={(feedback) => console.log('Feedback submitted:', feedback)} />
         </div>
     );
 }

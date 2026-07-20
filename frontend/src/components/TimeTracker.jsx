@@ -1,6 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
-import axios from 'axios';
+import { timeService } from '../services/api';
 
 /**
  * TimeTracker - Invisible component that logs app usage.
@@ -20,10 +20,8 @@ function TimeTracker() {
         const interval = setInterval(() => {
             if (isTabActive.current && token) {
                 // User spent 1 minute actively on the app
-                axios.post('http://localhost:5000/api/time_log', 
-                    { minutes: 1 }, 
-                    { headers: { Authorization: `Bearer ${token}` } }
-                ).catch(err => console.error('Failed to log time:', err));
+                timeService.logTime(1)
+                    .catch(err => console.error('Failed to log time:', err));
             }
         }, 60000); // 1 minute interval
 

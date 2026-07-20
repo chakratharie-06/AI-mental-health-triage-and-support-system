@@ -28,6 +28,7 @@ function SignUp() {
     // UI state
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
+    const [successData, setSuccessData] = useState(null);
 
     // Password strength calculation
     const getPasswordStrength = (pwd) => {
@@ -72,8 +73,8 @@ function SignUp() {
         setLoading(true);
 
         try {
-            await register(formData.name, formData.email, formData.password);
-            navigate('/age-selection');
+            const data = await register(formData.name, formData.email, formData.password);
+            setSuccessData(data); // Display the success screen with dev_verify_link
         } catch (err) {
             setError(err.response?.data?.error || 'Unable to create account. Please try again.');
         } finally {
@@ -90,8 +91,47 @@ function SignUp() {
                 <div className="absolute bottom-20 left-1/3 w-64 h-64 bg-primary-300 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-blob animation-delay-4000"></div>
             </div>
 
-            {/* Main card */}
-            <motion.div
+            {successData ? (
+                <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="relative w-full max-w-md"
+                >
+                    <div className="bg-white/80 backdrop-blur-lg rounded-3xl shadow-2xl p-8 border border-white/20 text-center">
+                        <div className="w-16 h-16 bg-success-50 rounded-full flex items-center justify-center mx-auto mb-4 border border-success-100">
+                            <svg className="w-8 h-8 text-success-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                            </svg>
+                        </div>
+                        <h2 className="text-2xl font-bold text-gray-900 mb-2">Check Your Email</h2>
+                        <p className="text-gray-600 mb-6">
+                            We've sent a verification link to <strong>{formData.email}</strong>.
+                            Please verify your email address to continue.
+                        </p>
+
+                        {successData.dev_verify_link && (
+                            <div className="mt-4 p-4 bg-amber-50 border border-amber-200 rounded-xl text-left mb-6">
+                                <p className="text-xs text-amber-800 font-semibold mb-2 flex items-center gap-1">
+                                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+                                    Developer Mode Active
+                                </p>
+                                <p className="text-xs text-amber-700 mb-2">Simulated email delivery. Click the link below to verify your email:</p>
+                                <a href={successData.dev_verify_link} className="text-xs text-primary-600 font-medium break-all hover:underline">
+                                    {successData.dev_verify_link}
+                                </a>
+                            </div>
+                        )}
+
+                        <button
+                            onClick={() => navigate('/signin')}
+                            className="w-full py-3 bg-gradient-to-r from-primary-600 to-secondary-600 text-white font-semibold rounded-xl hover:from-primary-700 hover:to-secondary-700 transition-all shadow-lg"
+                        >
+                            Return to Sign In
+                        </button>
+                    </div>
+                </motion.div>
+            ) : (
+                <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.5 }}
@@ -333,7 +373,8 @@ function SignUp() {
                         </p>
                     </div>
                 </div>
-            </motion.div>
+                </motion.div>
+            )}
         </div>
     );
 }

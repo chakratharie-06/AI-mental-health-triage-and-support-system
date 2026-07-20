@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { AlertCircle, CheckCircle2, ArrowLeft, ClipboardList, ChevronRight, ChevronLeft } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { assessmentService } from "../services/api";
 
 const questions = [
   {
@@ -96,7 +97,7 @@ export default function AssessmentPage() {
     }, 450);
   };
 
-  const handleNext = () => {
+  const handleNext = async () => {
     if (currentQuestion < questions.length - 1) {
       setCurrentQuestion(currentQuestion + 1);
     } else {
@@ -105,6 +106,12 @@ export default function AssessmentPage() {
         const option = question?.options.find((o) => o.value === value);
         return sum + (option?.score || 0);
       }, 0);
+
+      try {
+        await assessmentService.saveResult(totalScore, answers);
+      } catch (error) {
+        console.error("Failed to save assessment to backend", error);
+      }
 
       localStorage.setItem("assessmentScore", totalScore.toString());
       localStorage.setItem("assessmentAnswers", JSON.stringify(answers));

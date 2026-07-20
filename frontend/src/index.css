@@ -433,3 +433,69 @@ h6 {
     white-space: nowrap;
     border-width: 0;
 }
+
+/* ============================================
+   AGE CATEGORY THEMES
+   ============================================ */
+
+/* 1. Student / Young Adult (18-25) 
+   Gamified, vibrant, rounded */
+body.theme-student {
+    --primary-50: #fdf2f8;
+    --primary-100: #fce7f3;
+    --primary-200: #fbcfe8;
+    --primary-300: #f9a8d4;
+    --primary-400: #f472b6;
+    --primary-500: #ec4899;
+    --primary-600: #db2777;
+    --primary-700: #be185d;
+    --secondary-50: #eff6ff;
+    --secondary-500: #3b82f6;
+    --secondary-600: #2563eb;
+    --radius-base: 1rem;
+    --radius-md: 1.5rem;
+    --radius-lg: 2rem;
+    --shadow-base: 0 4px 14px 0 rgba(236,72,153, 0.1);
+    --shadow-md: 0 8px 24px -4px rgba(236,72,153, 0.15);
+}
+
+/* 2. Working Professional (25-45) 
+   Minimalist, slate/blue tones, sharp edges, structured */
+body.theme-professional {
+    --primary-50: #f8fafc;
+    --primary-100: #f1f5f9;
+    --primary-200: #e2e8f0;
+    --primary-300: #cbd5e1;
+    --primary-400: #94a3b8;
+    --primary-500: #64748b;
+    --primary-600: #475569;
+    --primary-700: #334155;
+    --primary-800: #1e293b;
+    --secondary-500: #0f172a;
+    --bg-page: #f1f5f9;
+    --surface-secondary: #f8fafc;
+    --radius-base: 0.25rem;
+    --radius-md: 0.375rem;
+    --radius-lg: 0.5rem;
+    --shadow-base: 0 1px 2px 0 rgba(0,0,0,0.06);
+    --shadow-md: 0 4px 6px -1px rgba(0,0,0,0.08);
+}
+
+/* 3. Senior (45+) 
+   High contrast, calm greens, huge fonts, extreme readability */
+body.theme-senior {
+    --primary-50: #f0fdf4;
+    --primary-100: #dcfce7;
+    --primary-500: #16a34a;
+    --primary-600: #15803d;
+    --primary-700: #166534;
+    --text-primary: #000000;
+    --text-secondary: #111111;
+    --bg-page: #ffffff;
+    --font-body: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+    font-size: 1.15rem; /* Drastically scale up all rems globally */
+}
+body.theme-senior .card {
+    border: 2px solid #e5e7eb;
+    box-shadow: none;
+}

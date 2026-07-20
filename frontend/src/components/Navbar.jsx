@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { Menu, X, Home, MessageCircle, Heart, BookOpen, Wind, User, BarChart3, LogOut, Phone } from 'lucide-react';
-import axios from 'axios';
+import { authService } from '../services/api';
 
 const Navbar = () => {
     const [isOpen, setIsOpen] = useState(false);
@@ -11,13 +11,8 @@ const Navbar = () => {
 
     const handleLogout = async () => {
         try {
-            const token = localStorage.getItem('token');
-
             // Call backend logout endpoint to clear conversations
-            await axios.post('http://localhost:5000/api/logout', {}, {
-                headers: { Authorization: `Bearer ${token}` }
-            });
-
+            await authService.logout();
             console.log('✅ Logout successful - Chat cleared, analytics preserved');
         } catch (error) {
             console.error('Logout API error:', error);

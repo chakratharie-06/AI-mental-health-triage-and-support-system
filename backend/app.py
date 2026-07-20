@@ -1,9 +1,10 @@
 import os
 import time
+from datetime import datetime
 from dotenv import load_dotenv
 from flask import Flask, request, jsonify
 from flask_cors import CORS
-from models import db, User, Conversation, MoodEntry, JournalEntry, TimeLog
+from models import db, User, Conversation, Message, MoodEntry, JournalEntry, TimeLog, AssessmentResult
 from auth import generate_token, token_required
 from triage_engine import triage_engine, enhanced_triage_engine
 from resources import get_resources_by_state
@@ -17,7 +18,7 @@ CORS(app)
 
 # Database Configuration
 basedir = os.path.abspath(os.path.dirname(__file__))
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(basedir, 'care_nest.db')
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(basedir, 'care_nest_v2.db')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'care-nest-secret-key-change-in-production')
 
@@ -159,20 +160,24 @@ def signup():
     if existing_user:
         return jsonify({'error': 'Email already registered'}), 400
     
-    # Create user
-    user = User(name=data['name'], email=data['email'], age_group=data.get('age'))
+    # Create user, default to unverified
+    import secrets
+    user = User(name=data['name'], email=data['email'], age_group=data.get('age'), is_verified=False)
     user.set_password(data['password'])
+    
+    # Generate verification token
+    user.verification_token = secrets.token_urlsafe(32)
     
     db.session.add(user)
     db.session.commit()
     
-    # Generate token
-    token = generate_token(user.id)
+    dev_verify_link = f"http://localhost:5173/verify-email?token={user.verification_token}"
     
+    # Do NOT return a JWT token, they must verify first
     return jsonify({
-        'message': 'User created successfully',
-        'token': token,
-        'user': user.to_dict()
+        'message': 'User created successfully. Please verify your email.',
+        'user': user.to_dict(),
+        'dev_verify_link': dev_verify_link
     }), 201
 
 @app.route('/api/login', methods=['POST'])
@@ -186,6 +191,9 @@ def login():
     
     if not user or not user.check_password(data['password']):
         return jsonify({'error': 'Invalid credentials'}), 401
+        
+    if not user.is_verified:
+        return jsonify({'error': 'Please verify your email address before logging in.'}), 403
     
     token = generate_token(user.id)
     
@@ -194,6 +202,91 @@ def login():
         'token': token,
         'user': user.to_dict()
     })
+
+@app.route('/api/forgot-password', methods=['POST'])
+def forgot_password():
+    data = request.json
+    email = data.get('email')
+    if not email:
+        return jsonify({'error': 'Email is required'}), 400
+        
+    user = User.query.filter_by(email=email).first()
+    if not user:
+        # Don't reveal whether user exists for security, just succeed
+        return jsonify({'message': 'If the email exists, a reset link will be sent.'}), 200
+        
+    import secrets
+    from datetime import datetime, timedelta
+    
+    token = secrets.token_urlsafe(32)
+    user.reset_token = token
+    user.reset_token_expiry = datetime.utcnow() + timedelta(hours=1)
+    db.session.commit()
+    
+    # In a real app, send email here. For dev, return it in the response so the frontend can display it.
+    reset_link = f"http://localhost:5173/reset-password?token={token}"
+    
+    return jsonify({
+        'message': 'Password reset token generated (simulated email sent)',
+        'dev_reset_link': reset_link
+    }), 200
+
+@app.route('/api/reset-password', methods=['POST'])
+def reset_password():
+    data = request.json
+    token = data.get('token')
+    new_password = data.get('new_password')
+    
+    if not token or not new_password:
+        return jsonify({'error': 'Token and new password are required'}), 400
+        
+    user = User.query.filter_by(reset_token=token).first()
+    from datetime import datetime
+    
+    if not user or not user.reset_token_expiry or user.reset_token_expiry < datetime.utcnow():
+        return jsonify({'error': 'Invalid or expired token'}), 400
+        
+    user.set_password(new_password)
+    user.reset_token = None
+    user.reset_token_expiry = None
+    db.session.commit()
+    
+    return jsonify({'message': 'Password has been reset successfully'}), 200
+
+@app.route('/api/change-password', methods=['POST'])
+@token_required
+def change_password(current_user):
+    data = request.json
+    current_password = data.get('current_password')
+    new_password = data.get('new_password')
+    
+    if not current_password or not new_password:
+        return jsonify({'error': 'Current and new passwords are required'}), 400
+        
+    if not current_user.check_password(current_password):
+        return jsonify({'error': 'Invalid current password'}), 401
+        
+    current_user.set_password(new_password)
+    db.session.commit()
+    
+    return jsonify({'message': 'Password changed successfully'}), 200
+
+@app.route('/api/verify-email', methods=['POST'])
+def verify_email():
+    data = request.json
+    token = data.get('token')
+    if not token:
+        return jsonify({'error': 'Token is required'}), 400
+        
+    user = User.query.filter_by(verification_token=token).first()
+    if not user:
+        return jsonify({'error': 'Invalid verification token'}), 400
+        
+    user.is_verified = True
+    user.verification_token = None
+    db.session.commit()
+    
+    return jsonify({'message': 'Email successfully verified'}), 200
 
 @app.route('/api/anonymous-login', methods=['POST'])
 def anonymous_login():
@@ -213,7 +306,8 @@ def anonymous_login():
         user = User(
             name="Anonymous Guest",
             email=anon_email,
-            age_group="18+" # Default safer assumption, or let them pick later
+            age_group="18+", # Default safer assumption, or let them pick later
+            is_verified=True # Anonymous users are auto-verified
         )
         user.set_password(anon_password)
         
@@ -306,9 +400,42 @@ def update_profile(user_id):
         db.session.rollback()
         return jsonify({'error': 'Failed to update profile'}), 500
 
+@app.route('/api/assessment', methods=['POST'])
+@token_required
+def save_assessment(user_id):
+    try:
+        data = request.json
+        score = data.get('score')
+        answers = data.get('answers')
+        
+        if score is None or answers is None:
+            return jsonify({'error': 'Missing score or answers'}), 400
+            
+        import json
+        new_result = AssessmentResult(
+            user_id=user_id,
+            score=score,
+            answers=json.dumps(answers)
+        )
+        
+        db.session.add(new_result)
+        db.session.commit()
+        
+        return jsonify({
+            'message': 'Assessment saved successfully',
+            'assessment': new_result.to_dict()
+        }), 201
+        
+    except Exception as e:
+        print(f"Assessment Save Error: {e}")
+        db.session.rollback()
+        return jsonify({'error': 'Failed to save assessment'}), 500
+
 @app.route('/api/analytics', methods=['GET'])
 @token_required
 def get_analytics(user_id):
+    days_count = request.args.get('days', default=7, type=int)
+    
     # Fetch user's mood history
     moods = MoodEntry.query.filter_by(user_id=user_id).order_by(MoodEntry.created_at.asc()).all()
     
@@ -349,15 +476,15 @@ def get_analytics(user_id):
     if mood_counts:
         average_mood = max(mood_counts, key=mood_counts.get).capitalize()
     
-    # Generate weekly trend (last 7 days)
+    # Generate trend based on days_count
     from datetime import datetime, timedelta
     today = datetime.now()
     weekly_trend = []
     days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
     
-    for i in range(7):
-        day_date = today - timedelta(days=6-i)
-        day_name = days[day_date.weekday()]
+    for i in range(days_count):
+        day_date = today - timedelta(days=(days_count - 1) - i)
+        day_label = day_date.strftime('%b %d') if days_count > 7 else days[day_date.weekday()]
         
         # Get moods for this day
         day_moods = [m for m in moods if m.created_at.date() == day_date.date()]
@@ -370,21 +497,21 @@ def get_analytics(user_id):
             mood_score = 5  # Default neutral
         
         weekly_trend.append({
-            'day': day_name,
+            'day': day_label,
             'mood': mood_score
         })
         
-    # Generate weekly time spent trend (last 7 days)
+    # Generate time spent trend
     time_logs = TimeLog.query.filter_by(user_id=user_id).all()
     weekly_time_trend = []
     total_time_spent = 0
-    for i in range(7):
-        day_date = today - timedelta(days=6-i)
-        day_name = days[day_date.weekday()]
+    for i in range(days_count):
+        day_date = today - timedelta(days=(days_count - 1) - i)
+        day_label = day_date.strftime('%b %d') if days_count > 7 else days[day_date.weekday()]
         day_time_logs = [t for t in time_logs if t.created_at.date() == day_date.date()]
         day_minutes = sum(t.minutes for t in day_time_logs)
         weekly_time_trend.append({
-            'day': day_name,
+            'day': day_label,
             'minutes': day_minutes
         })
         total_time_spent += day_minutes
@@ -392,10 +519,32 @@ def get_analytics(user_id):
     # Calculate Wellbeing Score (out of 10)
     last_7_days_moods = [m for m in moods if (today - m.created_at).days <= 7]
     wellbeing_score = 7.5  # Default
-    if last_7_days_moods:
-        avg_intensity = sum(m.intensity for m in last_7_days_moods) / len(last_7_days_moods)
-        wellbeing_score = round(10.0 - (avg_intensity * 0.4), 1)
+    
+    distress_points = [m.intensity for m in last_7_days_moods]
+    last_7_days_convs = [c for c in conversations if (today - c.updated_at).days <= 7]
+    for c in last_7_days_convs:
+        for msg in c.get_messages():
+            if msg.get('role') == 'user':
+                pass # We can use AI's distress level assessment
+            elif msg.get('role') == 'ai' and 'distress_level' in msg:
+                mapped_intensity = 1 + (msg['distress_level'] * 2.25)
+                distress_points.append(mapped_intensity)
+                
+    if distress_points:
+        # Give more weight to recent points by taking the average
+        avg_distress = sum(distress_points) / len(distress_points)
+        wellbeing_score = round(10.0 - (avg_distress * 0.8), 1)
         if wellbeing_score > 10.0: wellbeing_score = 10.0
+        if wellbeing_score < 0.0: wellbeing_score = 0.0
+        
+    # Factor in recent assessment score
+    latest_assessment = AssessmentResult.query.filter_by(user_id=user_id).order_by(AssessmentResult.created_at.desc()).first()
+    if latest_assessment and (today - latest_assessment.created_at).days <= 30:
+        # Score is 0-18. 0 = best (10/10), 18 = worst (0/10)
+        assessment_wellbeing = max(0.0, 10.0 - (latest_assessment.score / 18.0 * 10.0))
+        
+        # Combine: Assessment is more formal, so give it 50% weight if available
+        wellbeing_score = round((wellbeing_score * 0.5) + (assessment_wellbeing * 0.5), 1)
         
     # Calculate Current Streak
     active_dates = set()
@@ -483,10 +632,13 @@ def chat(user_id):
     else:
         conversation = Conversation.query.filter_by(user_id=user_id)\
             .order_by(Conversation.updated_at.desc()).first()
-        if not conversation:
+        from datetime import timedelta
+        # Create a new conversation if none exists or if the last one is older than 1 hour
+        if not conversation or (datetime.utcnow() - conversation.updated_at) > timedelta(hours=1):
             conversation = Conversation(user_id=user_id)
             conversation.set_messages([])
             db.session.add(conversation)
+            db.session.commit() # Commit to get an ID just in case
         history = conversation.get_messages()
 
     # ── 2. Triage ─────────────────────────────────────────────────────────────
@@ -543,9 +695,14 @@ def chat(user_id):
 
     # ── 6. Save user message ──────────────────────────────────────────────────
     if not is_anonymous and conversation:
-        conversation.add_message('user', user_message)
+        conversation.updated_at = datetime.utcnow()
+        msg = Message(conversation_id=conversation.id, role='user', text=user_message)
+        db.session.add(msg)
 
     # ── 7. Generate AI response via AI Engine ─────────────────────────────────
+    # Extract age_group from user record (anonymous users have no age_group → generic)
+    user_age_group = (user.age_group or "").strip() if user else ""
+
     ai_response = ai_generate_response(
         user_message=user_message,
         history=history,
@@ -555,11 +712,19 @@ def chat(user_id):
         cultural_context=cultural_context,
         is_escalating=is_escalating,
         past_moods_summary=past_moods_summary,
+        age_group=user_age_group,
     )
 
     # ── 8. Save AI message & commit ───────────────────────────────────────────
     if not is_anonymous and conversation:
-        conversation.add_message('ai', ai_response, severity, distress_level)
+        ai_msg = Message(
+            conversation_id=conversation.id,
+            role='ai',
+            text=ai_response,
+            triage_status=severity,
+            distress_level=distress_level
+        )
+        db.session.add(ai_msg)
         db.session.commit()
 
     return jsonify({
@@ -582,6 +747,9 @@ def log_mood(user_id):
     data = request.json
     mood = data.get('mood')
     intensity = data.get('intensity', 5)
+    notes = data.get('notes', '')
+    sec_label = data.get('secondary_metric_label')
+    sec_int = data.get('secondary_intensity')
     
     if not mood:
         return jsonify({'error': 'Mood is required'}), 400
@@ -597,7 +765,14 @@ def log_mood(user_id):
         }), 201
         
     try:
-        entry = MoodEntry(user_id=user_id, mood=mood, intensity=intensity)
+        entry = MoodEntry(
+            user_id=user_id, 
+            mood=mood, 
+            intensity=intensity, 
+            note=notes,
+            secondary_metric_label=sec_label,
+            secondary_intensity=sec_int
+        )
         db.session.add(entry)
         db.session.commit()
         return jsonify({'message': 'Mood logged successfully', 'entry': entry.to_dict()}), 201
@@ -630,18 +805,6 @@ def get_mental_health_resources():
     data = get_resources_by_state(state)
     return jsonify(data), 200
 
-@app.route('/api/book_appointment', methods=['POST'])
-def book_appointment():
-    # Mock Booking Logic
-    # In a real app, this would send SMS/Email via Twilio/SendGrid
-    data = request.json
-    doctor_name = data.get('doctor_name')
-    print(f"Booking Request received for {doctor_name} from {data.get('contact')}")
-    
-    return jsonify({
-        "success": True, 
-        "message": f"Appointment request sent to {doctor_name}. You will receive a confirmation SMS shortly."
-    }), 200
 
 @app.route('/api/user/update', methods=['PUT'])
 @token_required
@@ -667,7 +830,7 @@ def get_conversations(user_id):
         'conversations': [
             {
                 'id': conv.id,
-                'messages': conv.get_messages(),
+                'messages': [m.to_dict() for m in conv.messages],
                 'created_at': conv.created_at.isoformat(),
                 'updated_at': conv.updated_at.isoformat()
             }
@@ -685,7 +848,7 @@ def get_conversation(user_id, conversation_id):
     
     return jsonify({
         'id': conversation.id,
-        'messages': conversation.get_messages(),
+        'messages': [m.to_dict() for m in conversation.messages],
         'created_at': conversation.created_at.isoformat()
     })
 
@@ -766,7 +929,16 @@ def get_user_distress_status(user_id):
 @app.route('/api/mood/history', methods=['GET'])
 @token_required
 def get_mood_history(user_id):
-    moods = MoodEntry.query.filter_by(user_id=user_id).order_by(MoodEntry.created_at.desc()).limit(30).all()
+    limit = request.args.get('limit', type=int)
+    offset = request.args.get('offset', default=0, type=int)
+    
+    query = MoodEntry.query.filter_by(user_id=user_id).order_by(MoodEntry.created_at.desc())
+    if limit:
+        query = query.limit(limit)
+    if offset:
+        query = query.offset(offset)
+        
+    moods = query.all()
     return jsonify({'moods': [mood.to_dict() for mood in moods]})
 
 # ============ JOURNAL ROUTES ============
@@ -832,7 +1004,30 @@ def create_journal_entry(user_id):
     }), 201
 
 
-
+@app.route('/api/journal/<int:entry_id>', methods=['PUT'])
+@token_required
+def update_journal_entry(user_id, entry_id):
+    """Update a journal entry's title and content"""
+    data = request.json
+    try:
+        entry = JournalEntry.query.filter_by(id=entry_id, user_id=user_id).first()
+        if not entry:
+            return jsonify({'error': 'Entry not found'}), 404
+            
+        if 'content' in data and data['content']:
+            entry.content = data['content']
+        if 'title' in data:
+            entry.title = data['title'] or None
+            
+        db.session.commit()
+        return jsonify({
+            'message': 'Entry updated',
+            'entry': entry.to_dict()
+        }), 200
+    except Exception as e:
+        print(f"Error updating entry: {e}")
+        db.session.rollback()
+        return jsonify({'error': 'Failed to update entry'}), 500
 
 @app.route('/api/journal/<int:entry_id>', methods=['DELETE'])
 @token_required
@@ -851,7 +1046,8 @@ def delete_journal_entry(user_id, entry_id):
         return jsonify({'error': 'Failed to delete entry'}), 500
 
 @app.route('/api/admin/insights', methods=['GET'])
-def get_admin_insights():
+@token_required
+def get_admin_insights(user_id):
     total_users = User.query.count()
     total_conversations = Conversation.query.count()
     
@@ -882,11 +1078,20 @@ def get_admin_insights():
 
     top_moods = sorted([{"mood": k.capitalize(), "count": v} for k, v in mood_breakdown.items()], key=lambda x: x["count"], reverse=True)[:5]
 
+    total_minutes = db.session.query(func.sum(TimeLog.minutes)).scalar() or 0
+    
+    if total_conversations > 0:
+        avg_session_minutes = int(total_minutes / total_conversations)
+    else:
+        avg_session_minutes = 0
+        
+    avg_session_str = f"{avg_session_minutes} min"
+
     return jsonify({
         "totalUsers": total_users,
         "activeToday": active_today,
         "totalSessions": total_conversations,
-        "averageSessionLength": "12 min",  # Static/placeholder for now
+        "averageSessionLength": avg_session_str,
         "distressDistribution": distress_counts,
         "topMoods": top_moods
     })
@@ -894,7 +1099,8 @@ def get_admin_insights():
 # ============ ADMIN/DEBUG ROUTES ============
 
 @app.route('/api/admin/data', methods=['GET'])
-def view_all_data():
+@token_required
+def view_all_data(user_id):
     """Simple endpoint to view all stored data (for development/debugging)"""
     users = User.query.all()
     conversations = Conversation.query.all()
@@ -907,6 +1113,39 @@ def view_all_data():
         'total_conversations': len(conversations),
         'total_moods': len(moods)
     })
+
+# ============ BACKGROUND CLEANUP TASK ============
+import threading
+import time
+from datetime import datetime, timedelta
+
+def cleanup_anonymous_users():
+    """Background task to delete anonymous users older than 24 hours."""
+    while True:
+        try:
+            with app.app_context():
+                cutoff_time = datetime.utcnow() - timedelta(hours=24)
+                # Query all users with email starting with 'anon_' created before cutoff
+                old_anons = User.query.filter(
+                    User.email.like('anon_%'),
+                    User.created_at < cutoff_time
+                ).all()
+                
+                if old_anons:
+                    count = len(old_anons)
+                    for anon in old_anons:
+                        db.session.delete(anon)
+                    db.session.commit()
+                    print(f"[Cleanup] Deleted {count} expired anonymous accounts.")
+        except Exception as e:
+            print(f"[Cleanup Error] {e}")
+            
+        # Run cleanup every hour (3600 seconds)
+        time.sleep(3600)
+
+# Start the background thread when the app initializes
+cleanup_thread = threading.Thread(target=cleanup_anonymous_users, daemon=True)
+cleanup_thread.start()
 
 
 if __name__ == '__main__':

@@ -1,11 +1,15 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
+import { analyticsService } from '../services/api';
 import { Activity, Heart, TrendingUp, MessageCircle, BookOpen, Wind, Phone, ClipboardList } from 'lucide-react';
 import Navbar from '../components/Navbar';
+import { useAuth } from '../context/AuthContext';
+import BurnoutPredictor from '../components/mental-health/BurnoutPredictor';
+import MicroTherapy from '../components/core/MicroTherapy';
 
 const DashboardPage = () => {
     const navigate = useNavigate();
+    const { user } = useAuth();
     const [stats, setStats] = useState({
         totalSessions: 0,
         currentStreak: 0,
@@ -15,26 +19,25 @@ const DashboardPage = () => {
     const [recentActivity, setRecentActivity] = useState([]);
     const [loading, setLoading] = useState(true);
 
+    const isProfessional = user?.age_group === '25-35' || user?.age_group === '35-45';
+
     useEffect(() => {
         fetchDashboardData();
     }, []);
 
     const fetchDashboardData = async () => {
         try {
-            const token = localStorage.getItem('token');
-            const response = await axios.get('/api/analytics', {
-                headers: { Authorization: `Bearer ${token}` }
-            });
+            const data = await analyticsService.getAnalytics();
 
             setStats({
-                totalSessions: response.data.totalSessions || 0,
-                currentStreak: response.data.currentStreak || 0,
-                wellbeingScore: response.data.wellbeingScore || 7.5,
-                dominantMood: response.data.averageMood || 'Calm'
+                totalSessions: data.totalSessions || 0,
+                currentStreak: data.currentStreak || 0,
+                wellbeingScore: data.wellbeingScore || 7.5,
+                dominantMood: data.averageMood || 'Calm'
             });
 
-            if (response.data.recentActivity && response.data.recentActivity.length > 0) {
-                setRecentActivity(response.data.recentActivity);
+            if (data.recentActivity && data.recentActivity.length > 0) {
+                setRecentActivity(data.recentActivity);
             } else {
                 setRecentActivity([{ type: 'system', text: 'Welcome to Care Nest! Take a minute to check your wellbeing.', time: 'Just now' }]);
             }
@@ -108,7 +111,7 @@ const DashboardPage = () => {
 
                 {/* Stats Grid */}
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-                    <div className="card bg-gradient-to-br from-primary-50 to-primary-100 border-primary-200">
+                    <div className="card group bg-gradient-to-br from-primary-50 to-primary-100 border-primary-200 hover:-translate-y-1 hover:shadow-lg transition-all duration-300 cursor-pointer">
                         <div className="flex items-center justify-between">
                             <div>
                                 <p className="text-sm font-medium text-gray-600 mb-1">Total Sessions</p>
@@ -116,13 +119,13 @@ const DashboardPage = () => {
                                     {stats.totalSessions}
                                 </p>
                             </div>
-                            <div className="w-12 h-12 bg-primary-500 rounded-lg flex items-center justify-center">
+                            <div className="w-12 h-12 bg-primary-500 rounded-lg flex items-center justify-center transform group-hover:scale-110 group-hover:rotate-6 transition-transform duration-300">
                                 <Activity className="w-6 h-6 text-white" />
                             </div>
                         </div>
                     </div>
 
-                    <div className="card bg-gradient-to-br from-secondary-50 to-secondary-100 border-secondary-200">
+                    <div className="card group bg-gradient-to-br from-secondary-50 to-secondary-100 border-secondary-200 hover:-translate-y-1 hover:shadow-lg transition-all duration-300 cursor-pointer">
                         <div className="flex items-center justify-between">
                             <div>
                                 <p className="text-sm font-medium text-gray-600 mb-1">Current Streak</p>
@@ -130,13 +133,13 @@ const DashboardPage = () => {
                                     {stats.currentStreak} days
                                 </p>
                             </div>
-                            <div className="w-12 h-12 bg-secondary-500 rounded-lg flex items-center justify-center">
+                            <div className="w-12 h-12 bg-secondary-500 rounded-lg flex items-center justify-center transform group-hover:scale-110 group-hover:-rotate-6 transition-transform duration-300">
                                 <TrendingUp className="w-6 h-6 text-white" />
                             </div>
                         </div>
                     </div>
 
-                    <div className="card bg-gradient-to-br from-green-50 to-green-100 border-success-base">
+                    <div className="card group bg-gradient-to-br from-green-50 to-green-100 border-success-base hover:-translate-y-1 hover:shadow-lg transition-all duration-300 cursor-pointer">
                         <div className="flex items-center justify-between">
                             <div>
                                 <p className="text-sm font-medium text-gray-600 mb-1">Wellbeing Score</p>
@@ -144,13 +147,13 @@ const DashboardPage = () => {
                                     {stats.wellbeingScore}/10
                                 </p>
                             </div>
-                            <div className="w-12 h-12 bg-success-base rounded-lg flex items-center justify-center">
+                            <div className="w-12 h-12 bg-success-base rounded-lg flex items-center justify-center transform group-hover:scale-110 group-hover:rotate-6 transition-transform duration-300">
                                 <Heart className="w-6 h-6 text-white" />
                             </div>
                         </div>
                     </div>
 
-                    <div className="card bg-gradient-to-br from-amber-50 to-amber-100 border-amber-200">
+                    <div className="card group bg-gradient-to-br from-amber-50 to-amber-100 border-amber-200 hover:-translate-y-1 hover:shadow-lg transition-all duration-300 cursor-pointer">
                         <div className="flex items-center justify-between">
                             <div>
                                 <p className="text-sm font-medium text-gray-600 mb-1">Dominant Mood</p>
@@ -158,7 +161,7 @@ const DashboardPage = () => {
                                     {stats.dominantMood}
                                 </p>
                             </div>
-                            <div className="w-12 h-12 bg-amber-500 rounded-lg flex items-center justify-center text-2xl">
+                            <div className="w-12 h-12 bg-amber-500 rounded-lg flex items-center justify-center text-2xl transform group-hover:scale-110 group-hover:rotate-12 transition-transform duration-300">
                                 😊
                             </div>
                         </div>
@@ -166,8 +169,10 @@ const DashboardPage = () => {
                 </div>
 
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                    {/* Quick Actions */}
-                    <div className="lg:col-span-2">
+                    {/* Column 1 & 2 */}
+                    <div className="lg:col-span-2 space-y-6">
+                        {isProfessional && <BurnoutPredictor stressLevel={68} />}
+                        
                         <div className="card">
                             <h2 className="text-2xl font-heading font-semibold mb-6">Quick Actions</h2>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -177,14 +182,20 @@ const DashboardPage = () => {
                                         <button
                                             key={index}
                                             onClick={() => navigate(action.path)}
-                                            className="flex items-start gap-4 p-4 rounded-lg border border-gray-200 hover:border-primary-300 hover:shadow-md transition-all duration-200 text-left"
+                                            className="group flex items-start gap-4 p-4 rounded-xl bg-white border border-gray-100 hover:border-transparent hover:shadow-[0_8px_30px_rgb(0,0,0,0.08)] hover:-translate-y-1 transition-all duration-300 text-left relative overflow-hidden"
                                         >
-                                            <div className={`${action.color} w-12 h-12 rounded-lg flex items-center justify-center flex-shrink-0`}>
+                                            <div className="absolute inset-0 bg-gradient-to-br from-white/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"></div>
+                                            <div className={`${action.color} w-12 h-12 rounded-lg flex items-center justify-center flex-shrink-0 transform group-hover:scale-110 group-hover:rotate-3 transition-transform duration-300 shadow-sm relative z-10`}>
                                                 <Icon className="w-6 h-6 text-white" />
                                             </div>
-                                            <div>
-                                                <h3 className="font-semibold text-gray-900 mb-1">{action.title}</h3>
-                                                <p className="text-sm text-gray-600">{action.description}</p>
+                                            <div className="relative z-10 flex-1 pr-6">
+                                                <h3 className="font-semibold text-gray-900 mb-1 group-hover:text-primary-600 transition-colors duration-200">{action.title}</h3>
+                                                <p className="text-sm text-gray-500 group-hover:text-gray-700 transition-colors duration-200">{action.description}</p>
+                                            </div>
+                                            <div className="absolute right-4 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 group-hover:translate-x-0 -translate-x-4 transition-all duration-300 text-primary-500">
+                                                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                                                </svg>
                                             </div>
                                         </button>
                                     );
@@ -193,19 +204,23 @@ const DashboardPage = () => {
                         </div>
                     </div>
 
-                    {/* Recent Activity */}
-                    <div className="card">
-                        <h2 className="text-2xl font-heading font-semibold mb-6">Recent Activity</h2>
-                        <div className="space-y-4">
-                            {recentActivity.map((activity, index) => (
-                                <div key={index} className="flex items-start gap-3 pb-4 border-b border-gray-100 last:border-0">
-                                    <div className="w-2 h-2 bg-primary-500 rounded-full mt-2"></div>
-                                    <div className="flex-1">
-                                        <p className="text-sm font-medium text-gray-900">{activity.text}</p>
-                                        <p className="text-xs text-gray-500 mt-1">{activity.time}</p>
+                    {/* Column 3 */}
+                    <div className="space-y-6">
+                        {isProfessional && <MicroTherapy />}
+                        
+                        <div className="card">
+                            <h2 className="text-2xl font-heading font-semibold mb-6">Recent Activity</h2>
+                            <div className="space-y-4">
+                                {recentActivity.map((activity, index) => (
+                                    <div key={index} className="flex items-start gap-3 pb-4 border-b border-gray-100 last:border-0">
+                                        <div className="w-2 h-2 bg-primary-500 rounded-full mt-2"></div>
+                                        <div className="flex-1">
+                                            <p className="text-sm font-medium text-gray-900">{activity.text}</p>
+                                            <p className="text-xs text-gray-500 mt-1">{activity.time}</p>
+                                        </div>
                                     </div>
-                                </div>
-                            ))}
+                                ))}
+                            </div>
                         </div>
                     </div>
                 </div>

@@ -13,6 +13,10 @@ class User(db.Model):
     age_group = db.Column(db.String(20), nullable=True)
     email = db.Column(db.String(120), unique=True, nullable=False)
     password_hash = db.Column(db.String(255), nullable=False)
+    reset_token = db.Column(db.String(100), nullable=True)
+    reset_token_expiry = db.Column(db.DateTime, nullable=True)
+    is_verified = db.Column(db.Boolean, default=False)
+    verification_token = db.Column(db.String(100), nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     
     # Relationships
@@ -20,6 +24,7 @@ class User(db.Model):
     mood_entries = db.relationship('MoodEntry', backref='user', lazy=True, cascade='all, delete-orphan')
     journal_entries = db.relationship('JournalEntry', backref='user', lazy=True, cascade='all, delete-orphan')
     time_logs = db.relationship('TimeLog', backref='user', lazy=True, cascade='all, delete-orphan')
+    assessment_results = db.relationship('AssessmentResult', backref='user', lazy=True, cascade='all, delete-orphan')
     
     def set_password(self, password):
         self.password_hash = generate_password_hash(password)
@@ -33,6 +38,7 @@ class User(db.Model):
             'name': self.name,
             'age_group': self.age_group,
             'email': self.email,
+            'is_verified': self.is_verified,
             'created_at': self.created_at.isoformat()
         }
 
@@ -41,27 +47,38 @@ class Conversation(db.Model):
     
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
-    messages = db.Column(db.Text, nullable=False)  # JSON string
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
+    # Relationship to messages
+    messages = db.relationship('Message', backref='conversation', lazy=True, cascade='all, delete-orphan')
+
     def get_messages(self):
-        return json.loads(self.messages)
-    
+        return [m.to_dict() for m in self.messages]
+
     def set_messages(self, messages_list):
-        self.messages = json.dumps(messages_list)
+        pass  # Messages are handled via the relationship; this is kept for compatibility
+
+class Message(db.Model):
+    __tablename__ = 'messages'
     
-    def add_message(self, role, text, triage_status='GREEN', distress_level=0):
-        messages = self.get_messages()
-        messages.append({
-            'role': role,
-            'text': text,
-            'triage_status': triage_status,
-            'distress_level': distress_level,
-            'timestamp': datetime.utcnow().isoformat()
-        })
-        self.set_messages(messages)
-        self.updated_at = datetime.utcnow()
+    id = db.Column(db.Integer, primary_key=True)
+    conversation_id = db.Column(db.Integer, db.ForeignKey('conversations.id'), nullable=False)
+    role = db.Column(db.String(20), nullable=False)  # user, ai, system
+    text = db.Column(db.Text, nullable=False)
+    triage_status = db.Column(db.String(20), default='GREEN')
+    distress_level = db.Column(db.Integer, default=0)
+    timestamp = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'role': self.role,
+            'text': self.text,
+            'triage_status': self.triage_status,
+            'distress_level': self.distress_level,
+            'timestamp': self.timestamp.isoformat()
+        }
 
 class MoodEntry(db.Model):
     __tablename__ = 'mood_entries'
@@ -71,6 +88,10 @@ class MoodEntry(db.Model):
     mood = db.Column(db.String(50), nullable=False)  # happy, sad, anxious, stressed, calm
     intensity = db.Column(db.Integer, default=5)  # 1-10 scale
     note = db.Column(db.Text)
+    
+    secondary_metric_label = db.Column(db.String(100), nullable=True)
+    secondary_intensity = db.Column(db.Integer, nullable=True)
+    
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     
     def to_dict(self):
@@ -79,6 +100,8 @@ class MoodEntry(db.Model):
             'mood': self.mood,
             'intensity': self.intensity,
             'note': self.note,
+            'secondary_metric_label': self.secondary_metric_label,
+            'secondary_intensity': self.secondary_intensity,
             'created_at': self.created_at.isoformat()
         }
 
@@ -113,5 +136,22 @@ class TimeLog(db.Model):
         return {
             'id': self.id,
             'minutes': self.minutes,
+            'created_at': self.created_at.isoformat()
+        }
+
+class AssessmentResult(db.Model):
+    __tablename__ = 'assessment_results'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    score = db.Column(db.Integer, nullable=False)
+    answers = db.Column(db.Text, nullable=False) # Store JSON string of answers
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'score': self.score,
+            'answers': json.loads(self.answers) if self.answers else {},
             'created_at': self.created_at.isoformat()
         }

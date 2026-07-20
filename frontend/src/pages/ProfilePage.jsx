@@ -15,14 +15,16 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { useLanguage } from '../context/LanguageContext';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
     User, Globe, Shield, Bell, LogOut, ChevronRight, AlertTriangle,
     Brain, Heart, Clock, Download, Trash2, Lock, CheckCircle,
     Volume2, MessageSquare, Zap, BarChart2, FileText, Camera,
-    Mail, Calendar, Activity, Settings, Phone
+    Mail, Calendar, Activity, Settings, Phone, UserCircle
 } from 'lucide-react';
 import Navbar from '../components/Navbar';
+import { authService } from '../services/api';
 
 /* ─── Sidebar navigation sections ─────────────────────────────────────────── */
 const NAV_ITEMS = [
@@ -118,13 +120,13 @@ function Badge({ children, color = 'violet' }) {
 /* ═══════════════════════════════════════════════════════════════════════════ */
 function ProfilePage() {
     const navigate = useNavigate();
-    const { logout, user } = useAuth();
+    const { logout, user, token, updateUser } = useAuth();
 
     /* ─── Section state */
     const [activeSection, setActiveSection] = useState('account');
 
     /* ─── Language */
-    const [language, setLanguage]   = useState('English');
+    const { language, changeLanguage } = useLanguage();
 
     /* ─── AI Preferences */
     const [aiTone, setAiTone]               = useState('Empathetic');
@@ -143,14 +145,31 @@ function ProfilePage() {
     const [analyticsShare, setAnalyticsShare]   = useState(false);
     const [dataRetention, setDataRetention]     = useState('90 days');
 
+    /* ─── Password Change */
+    const [currentPassword, setCurrentPassword] = useState('');
+    const [newPassword, setNewPassword]         = useState('');
+    const [passwordLoading, setPasswordLoading] = useState(false);
+    const [passwordError, setPasswordError]     = useState('');
+
     /* ─── UI */
     const [saveFlash, setSaveFlash]   = useState('');
     const [deleteModal, setDeleteModal] = useState(false);
     const [confirmText, setConfirmText] = useState('');
 
     const languages = [
-        'English', 'हिंदी (Hindi)', 'தமிழ் (Tamil)', 'తెలుగు (Telugu)',
-        'ಕನ್ನಡ (Kannada)', 'മലയാളം (Malayalam)', 'বাংলা (Bengali)', 'मराठी (Marathi)',
+        { value: "en-IN", label: 'English' },
+        { value: "hi-IN", label: 'हिंदी (Hindi)' },
+        { value: "ta-IN", label: 'தமிழ் (Tamil)' },
+        { value: "te-IN", label: 'తెలుగు (Telugu)' },
+        { value: "kn-IN", label: 'ಕನ್ನಡ (Kannada)' },
+        { value: "ml-IN", label: 'മലയാളം (Malayalam)' },
+        { value: "bn-IN", label: 'বাংলা (Bengali)' },
+        { value: "mr-IN", label: 'मराठी (Marathi)' },
+        { value: "gu-IN", label: 'ગુજરાતી (Gujarati)' },
+        { value: "pa-IN", label: 'ਪੰਜਾਬੀ (Punjabi)' },
+        { value: "or-IN", label: 'ଓଡ଼ିଆ (Odia)' },
+        { value: "ur-IN", label: 'اردو (Urdu)' },
+        { value: "as-IN", label: 'অসমীয়া (Assamese)' },
     ];
 
     const toneOptions   = ['Empathetic', 'Professional', 'Friendly', 'Concise'];
@@ -205,6 +224,42 @@ function ProfilePage() {
         a.click();
         URL.revokeObjectURL(url);
         showSaved('Data exported successfully');
+    };
+
+    const handleAgeGroupChange = async (newAge) => {
+        if (!newAge || newAge === user?.age_group) return;
+        try {
+            await authService.updateProfile({ age_group: newAge });
+            updateUser({ age_group: newAge });
+            showSaved(`Persona changed to ${newAge}`);
+        } catch (err) {
+            console.error("Failed to update age group", err);
+            alert("Failed to update AI Persona. Please try again.");
+        }
+    };
+
+    const handleChangePassword = async (e) => {
+        e.preventDefault();
+        setPasswordError('');
+        if (!currentPassword || !newPassword) {
+            setPasswordError('Both fields are required');
+            return;
+        }
+        if (newPassword.length < 6) {
+            setPasswordError('New password must be at least 6 characters');
+            return;
+        }
+        try {
+            setPasswordLoading(true);
+            await authService.changePassword(currentPassword, newPassword);
+            setCurrentPassword('');
+            setNewPassword('');
+            showSaved('Password changed successfully');
+        } catch (err) {
+            setPasswordError(err.response?.data?.error || 'Failed to change password');
+        } finally {
+            setPasswordLoading(false);
+        }
     };
 
     /* ─── Joined date display */
@@ -265,7 +320,7 @@ function ProfilePage() {
                                     <StyledSelect
                                         id="language-select"
                                         value={language}
-                                        onChange={(v) => { setLanguage(v); showSaved('Language updated'); }}
+                                        onChange={(v) => { changeLanguage(v); showSaved('Language updated'); }}
                                         options={languages}
                                     />
                                 </div>
@@ -279,6 +334,38 @@ function ProfilePage() {
             case 'ai':
                 return (
                     <motion.div key="ai" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-6">
+
+                        <Panel title="AI Persona (Age Group)" subtitle="Changes the AI's core personality, focus areas, and daily check-ins.">
+                            <div className="p-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                {[
+                                    { id: '18-25', label: '18–25 (Mental Coach)', icon: '🎓' },
+                                    { id: '25-35', label: '25–35 (Work-Life Coach)', icon: '💼' },
+                                    { id: '35-45', label: '35–45 (Life Balancer)', icon: '🏡' },
+                                    { id: '45+', label: '45+ (Wisdom Companion)', icon: '🌿' },
+                                ].map(group => {
+                                    const active = user?.age_group === group.id;
+                                    return (
+                                        <button
+                                            key={group.id}
+                                            onClick={() => handleAgeGroupChange(group.id)}
+                                            className={`flex items-center gap-3 p-3 rounded-xl border text-left transition-all ${
+                                                active 
+                                                    ? 'border-violet-500 bg-violet-50 ring-1 ring-violet-500 shadow-sm' 
+                                                    : 'border-gray-200 bg-white hover:border-violet-300 hover:bg-violet-50/50'
+                                            }`}
+                                        >
+                                            <div className="text-2xl">{group.icon}</div>
+                                            <div className="flex-1 min-w-0">
+                                                <p className={`text-sm font-semibold truncate ${active ? 'text-violet-900' : 'text-gray-900'}`}>
+                                                    {group.label}
+                                                </p>
+                                                {active && <p className="text-xs text-violet-600 font-medium mt-0.5">Active Persona</p>}
+                                            </div>
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                        </Panel>
 
                         <Panel title="Conversation Style" subtitle="Tailor how the AI interacts with you during sessions.">
                             <SettingRow icon={MessageSquare} label="Tone of Responses" description="Sets the emotional register of AI replies.">
@@ -385,6 +472,54 @@ function ProfilePage() {
                                 </p>
                             </div>
                         </div>
+
+                        <Panel title="Security" subtitle="Manage your account security.">
+                            <div className="px-6 py-5">
+                                <form onSubmit={handleChangePassword} className="space-y-4">
+                                    {passwordError && (
+                                        <div className="p-3 bg-rose-50 text-rose-600 text-sm rounded-lg border border-rose-200">
+                                            {passwordError}
+                                        </div>
+                                    )}
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 mb-1">Current Password</label>
+                                            <input
+                                                type="password"
+                                                value={currentPassword}
+                                                onChange={(e) => setCurrentPassword(e.target.value)}
+                                                className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg bg-gray-50 text-gray-900 focus:ring-2 focus:ring-violet-500 focus:border-violet-500 transition-all"
+                                                placeholder="••••••••"
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 mb-1">New Password</label>
+                                            <input
+                                                type="password"
+                                                value={newPassword}
+                                                onChange={(e) => setNewPassword(e.target.value)}
+                                                className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg bg-gray-50 text-gray-900 focus:ring-2 focus:ring-violet-500 focus:border-violet-500 transition-all"
+                                                placeholder="••••••••"
+                                            />
+                                        </div>
+                                    </div>
+                                    <div className="flex justify-end">
+                                        <button
+                                            type="submit"
+                                            disabled={passwordLoading}
+                                            className="flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-violet-600 hover:bg-violet-700 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                        >
+                                            {passwordLoading ? (
+                                                <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                            ) : (
+                                                <Lock className="w-4 h-4" />
+                                            )}
+                                            Update Password
+                                        </button>
+                                    </div>
+                                </form>
+                            </div>
+                        </Panel>
 
                         <Panel title="Data & Sharing" subtitle="Control what Care Nest collects and retains.">
                             <SettingRow icon={BarChart2} label="Anonymous Analytics" description="Help improve Care Nest by sharing anonymised usage data.">

@@ -2,7 +2,7 @@ import os
 from app import app, db
 
 # Delete existing DB if exists to ensure schema update
-db_path = os.path.join(os.path.dirname(__file__), 'care_nest.db')
+db_path = os.path.join(os.path.dirname(__file__), 'care_nest_v2.db')
 if os.path.exists(db_path):
     os.remove(db_path)
     print("Deleted old database")

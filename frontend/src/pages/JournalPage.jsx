@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
-import axios from 'axios';
+import { journalService } from '../services/api';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
     Plus, Trash2, BookOpen, CheckCircle, AlertTriangle, ArrowRight,
-    ChevronRight, Clock, Feather, Shield, FileText, X, Search
+    ChevronRight, Clock, Feather, Shield, FileText, X, Search, Edit2
 } from 'lucide-react';
 import Navbar from '../components/Navbar';
 
@@ -61,6 +61,7 @@ const WordCounter = ({ text }) => {
 const JournalPage = () => {
     const [entries, setEntries]           = useState([]);
     const [showNewEntry, setShowNewEntry] = useState(false);
+    const [isEditing, setIsEditing]       = useState(false);
     const [selectedEntry, setSelectedEntry] = useState(null);
     const [title, setTitle]               = useState('');
     const [newEntry, setNewEntry]         = useState('');
@@ -83,11 +84,8 @@ const JournalPage = () => {
 
     const fetchEntries = async () => {
         try {
-            const token = localStorage.getItem('token');
-            const res = await axios.get('http://localhost:5000/api/journal', {
-                headers: { Authorization: `Bearer ${token}` }
-            });
-            setEntries(res.data.entries || []);
+            const res = await journalService.getEntries();
+            setEntries(res.entries || []);
         } catch (err) {
             console.error('Error fetching entries:', err);
         } finally {
@@ -105,21 +103,23 @@ const JournalPage = () => {
         if (!newEntry.trim()) return;
         setSaving(true);
         try {
-            const token = localStorage.getItem('token');
-            const res = await axios.post(
-                'http://localhost:5000/api/journal',
-                { title: title.trim(), content: newEntry.trim() },
-                { headers: { Authorization: `Bearer ${token}` } }
-            );
-            const detectedMood = res.data.detected_mood || 'neutral';
-            const severity     = res.data.severity || 'GREEN';
-
-            if (severity === 'RED') {
-                setCriticalAlert(true);
+            if (isEditing && selectedEntry) {
+                const res = await journalService.updateEntry(selectedEntry.id, newEntry.trim(), title.trim());
+                showFlash(`Entry updated successfully`);
+                setIsEditing(false);
+                setSelectedEntry(res.entry);
             } else {
-                const moodCfg = MOOD_CONFIG[detectedMood] || MOOD_CONFIG.neutral;
-                const sevIcon = severity === 'YELLOW' ? '🟡' : '🟢';
-                showFlash(`Entry saved · Detected mood: ${moodCfg.emoji} ${moodCfg.label} ${sevIcon}`);
+                const res = await journalService.createEntry(newEntry.trim(), title.trim());
+                const detectedMood = res.detected_mood || 'neutral';
+                const severity     = res.severity || 'GREEN';
+
+                if (severity === 'RED') {
+                    setCriticalAlert(true);
+                } else {
+                    const moodCfg = MOOD_CONFIG[detectedMood] || MOOD_CONFIG.neutral;
+                    const sevIcon = severity === 'YELLOW' ? '🟡' : '🟢';
+                    showFlash(`Entry saved · Detected mood: ${moodCfg.emoji} ${moodCfg.label} ${sevIcon}`);
+                }
             }
 
             setTitle(''); setNewEntry(''); setShowNewEntry(false);
@@ -135,10 +135,7 @@ const JournalPage = () => {
     const handleDelete = async (id) => {
         if (!confirm('Permanently delete this journal entry?')) return;
         try {
-            const token = localStorage.getItem('token');
-            await axios.delete(`http://localhost:5000/api/journal/${id}`, {
-                headers: { Authorization: `Bearer ${token}` }
-            });
+            await journalService.deleteEntry(id);
             if (selectedEntry?.id === id) setSelectedEntry(null);
             fetchEntries();
         } catch (err) {
@@ -300,10 +297,10 @@ const JournalPage = () => {
                                         <div className="flex gap-3">
                                             <button
                                                 type="button"
-                                                onClick={() => { setShowNewEntry(false); setTitle(''); setNewEntry(''); }}
+                                                onClick={() => { setShowNewEntry(false); setTitle(''); setNewEntry(''); setIsEditing(false); }}
                                                 className="px-4 py-2 text-sm font-medium text-gray-500 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
                                             >
-                                                Discard
+                                                Cancel
                                             </button>
                                             <button
                                                 type="submit"
@@ -311,9 +308,9 @@ const JournalPage = () => {
                                                 className="flex items-center gap-2 px-5 py-2 bg-violet-600 hover:bg-violet-700 text-white text-sm font-bold rounded-lg disabled:opacity-40 disabled:cursor-not-allowed transition-all shadow-sm"
                                             >
                                                 {saving ? (
-                                                    <><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Analyzing...</>
+                                                    <><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> {isEditing ? 'Updating...' : 'Analyzing...'}</>
                                                 ) : (
-                                                    <><BookOpen className="w-4 h-4" /> Save Entry</>
+                                                    <><BookOpen className="w-4 h-4" /> {isEditing ? 'Update Entry' : 'Save Entry'}</>
                                                 )}
                                             </button>
                                         </div>
@@ -440,13 +437,27 @@ const JournalPage = () => {
                                                 )}
                                             </div>
                                         </div>
-                                        <button
-                                            onClick={() => handleDelete(selectedEntry.id)}
-                                            className="p-2 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors ml-4"
-                                            aria-label="Delete entry"
-                                        >
-                                            <Trash2 className="w-4 h-4" />
-                                        </button>
+                                        <div className="flex items-center">
+                                            <button
+                                                onClick={() => {
+                                                    setIsEditing(true);
+                                                    setShowNewEntry(true);
+                                                    setTitle(selectedEntry.title || '');
+                                                    setNewEntry(selectedEntry.content);
+                                                }}
+                                                className="p-2 text-gray-400 hover:text-blue-500 hover:bg-blue-50 rounded-lg transition-colors"
+                                                aria-label="Edit entry"
+                                            >
+                                                <Edit2 className="w-4 h-4" />
+                                            </button>
+                                            <button
+                                                onClick={() => handleDelete(selectedEntry.id)}
+                                                className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors ml-2"
+                                                aria-label="Delete entry"
+                                            >
+                                                <Trash2 className="w-4 h-4" />
+                                            </button>
+                                        </div>
                                     </div>
 
                                     {/* Entry body */}

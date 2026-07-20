@@ -89,8 +89,13 @@ function SignIn() {
         setLoading(true);
 
         try {
-            await login(email, password);
-            navigate('/chat');
+            const user = await login(email, password);
+            // Route based on whether age_group is already set
+            if (user?.age_group) {
+                navigate('/dashboard');
+            } else {
+                navigate('/age-selection');
+            }
         } catch (err) {
             setError(err.response?.data?.error || 'Invalid email or password');
         } finally {
@@ -204,9 +209,9 @@ function SignIn() {
                                 />
                                 <span className="text-sm text-gray-700">Remember me</span>
                             </label>
-                            <button type="button" className="text-sm text-primary-600 hover:text-primary-700 font-medium">
+                            <Link to="/forgot-password" className="text-sm text-primary-600 hover:text-primary-700 font-medium">
                                 Forgot password?
-                            </button>
+                            </Link>
                         </div>
 
                         {/* Sign In Button */}

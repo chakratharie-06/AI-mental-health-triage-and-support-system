@@ -1,17 +1,32 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
+import { moodService } from '../services/api';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowLeft, Thermometer, FileText, CheckCircle2, Info, ArrowRight } from 'lucide-react';
 import Navbar from '../components/Navbar';
+import { useAuth } from '../context/AuthContext';
 
 const MoodTrackingPage = () => {
     const navigate = useNavigate();
+    const { user } = useAuth();
     const [selectedMood, setSelectedMood] = useState(null);
     const [intensity, setIntensity] = useState(5);
+    const [secondaryIntensity, setSecondaryIntensity] = useState(5);
     const [notes, setNotes] = useState('');
     const [showSuccess, setShowSuccess] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
+
+    const getSecondaryMetric = (ageGroup) => {
+        switch (ageGroup) {
+            case '18-25': return { label: 'Focus & Study Pattern', minLabel: 'Distracted', maxLabel: 'Highly Focused' };
+            case '25-35': return { label: 'Post-Work Energy', minLabel: 'Exhausted', maxLabel: 'Energized' };
+            case '35-45': return { label: 'Life Load Balance', minLabel: 'Overwhelmed', maxLabel: 'Very Balanced' };
+            case '45+':   return { label: 'Clarity of Mind', minLabel: 'Foggy', maxLabel: 'Crystal Clear' };
+            default: return null;
+        }
+    };
+    
+    const secondaryMetric = getSecondaryMetric(user?.age_group);
 
     // Highly stylized mood configurations
     const moods = [
@@ -88,12 +103,10 @@ const MoodTrackingPage = () => {
         setIsSubmitting(true);
 
         try {
-            const token = localStorage.getItem('token');
-            await axios.post(
-                'http://localhost:5000/api/mood',
-                { mood: selectedMood, intensity, notes },
-                { headers: { Authorization: `Bearer ${token}` } }
-            );
+            const secondary = secondaryMetric
+                ? { label: secondaryMetric.label, intensity: secondaryIntensity }
+                : null;
+            await moodService.logMood(selectedMood, intensity, notes.trim(), secondary);
 
             setShowSuccess(true);
 
@@ -235,6 +248,38 @@ const MoodTrackingPage = () => {
                                         </div>
                                     </div>
                                 </div>
+
+                                {/* Conditionally Rendered Secondary Intensity (Age Group Dependent) */}
+                                {secondaryMetric && (
+                                    <div>
+                                        <div className="flex items-center justify-between mb-5">
+                                            <div className="flex items-center gap-2">
+                                                <div className="w-8 h-8 rounded-full flex items-center justify-center bg-violet-50">
+                                                    <span className="text-violet-600 font-bold text-sm">2B</span>
+                                                </div>
+                                                <h2 className="text-lg font-bold text-gray-900">{secondaryMetric.label}</h2>
+                                            </div>
+                                            <div className="px-4 py-1.5 rounded-full text-sm font-bold shadow-sm bg-gray-100 text-gray-600">
+                                                Scale: {secondaryIntensity} / 10
+                                            </div>
+                                        </div>
+
+                                        <div className="px-2">
+                                            <input
+                                                type="range"
+                                                min="1"
+                                                max="10"
+                                                value={secondaryIntensity}
+                                                onChange={(e) => setSecondaryIntensity(parseInt(e.target.value))}
+                                                className="w-full h-3 rounded-xl appearance-none cursor-pointer transition-colors duration-300 bg-gray-200 accent-violet-500"
+                                            />
+                                            <div className="flex justify-between items-center text-xs font-medium text-gray-400 mt-4 px-1">
+                                                <span>{secondaryMetric.minLabel}</span>
+                                                <span>{secondaryMetric.maxLabel}</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
 
                                 {/* 3. Clinical Context Array */}
                                 <div>

@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
-import axios from 'axios';
+import { analyticsService } from '../services/api';
 import { motion } from 'framer-motion';
 import { ArrowLeft, TrendingUp, BarChart3, Calendar, Smile, Flame, Activity } from 'lucide-react';
 import { AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
@@ -14,21 +13,20 @@ import { AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, R
  */
 function AnalyticsPage() {
     const navigate = useNavigate();
-    const { token } = useAuth();
 
     const [analytics, setAnalytics] = useState(null);
     const [loading, setLoading] = useState(true);
+    const [timeRange, setTimeRange] = useState(30); // Default to 30 days as requested
 
     useEffect(() => {
-        loadAnalytics();
-    }, []);
+        loadAnalytics(timeRange);
+    }, [timeRange]);
 
-    const loadAnalytics = async () => {
+    const loadAnalytics = async (days) => {
         try {
-            const response = await axios.get('http://localhost:5000/api/analytics', {
-                headers: { Authorization: `Bearer ${token}` }
-            });
-            setAnalytics(response.data);
+            setLoading(true);
+            const data = await analyticsService.getAnalytics(days);
+            setAnalytics(data);
         } catch (error) {
             console.error('Failed to load analytics:', error);
         } finally {
@@ -136,6 +134,19 @@ function AnalyticsPage() {
                             <h1 className="text-xl font-bold text-gray-900 tracking-tight">Clinical Analytics</h1>
                             <p className="text-sm text-gray-500">Professional dynamic wellbeing tracking</p>
                         </div>
+                    </div>
+                    
+                    <div className="flex items-center gap-4">
+                        <select 
+                            value={timeRange} 
+                            onChange={(e) => setTimeRange(Number(e.target.value))}
+                            className="bg-gray-100 border-none rounded-lg px-4 py-2 text-sm font-medium text-gray-700 focus:ring-2 focus:ring-violet-500 outline-none cursor-pointer"
+                        >
+                            <option value={7}>Last 7 Days</option>
+                            <option value={30}>Last 30 Days</option>
+                            <option value={90}>Last 3 Months</option>
+                            <option value={365}>Last Year</option>
+                        </select>
                     </div>
                 </div>
             </header>

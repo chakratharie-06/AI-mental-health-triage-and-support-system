@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
+import { adminService } from '../services/api';
 import { motion } from 'framer-motion';
 import { ArrowLeft, Users, TrendingUp, Activity, Shield, BarChart3 } from 'lucide-react';
 
@@ -22,8 +22,8 @@ function AdminDashboard() {
 
     const loadStats = async () => {
         try {
-            const response = await axios.get('/api/admin/insights');
-            setStats(response.data);
+            const data = await adminService.getInsights();
+            setStats(data);
         } catch (error) {
             console.error('Failed to load admin stats:', error);
         } finally {
@@ -31,25 +31,15 @@ function AdminDashboard() {
         }
     };
 
-    // Mock data for demonstration
-    const mockStats = {
-        totalUsers: 1247,
-        activeToday: 89,
-        totalSessions: 5632,
-        averageSessionLength: "12 min",
-        distressDistribution: [
-            { level: "Low", count: 3421, color: "bg-success-base" },
-            { level: "Moderate", count: 1876, color: "bg-warning-base" },
-            { level: "High", count: 335, color: "bg-danger-base" }
-        ],
-        topMoods: [
-            { mood: "Calm", count: 2145 },
-            { mood: "Anxious", count: 1876 },
-            { mood: "Sad", count: 987 }
-        ]
-    };
+    const data = stats || null;
 
-    const data = stats || mockStats;
+    if (!data && !loading) {
+        return (
+            <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-zinc-50 flex items-center justify-center">
+                <p className="text-gray-600">Failed to load admin stats.</p>
+            </div>
+        );
+    }
 
     return (
         <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-zinc-50">

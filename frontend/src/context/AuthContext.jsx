@@ -1,5 +1,5 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
-import axios from 'axios';
+import { authService } from '../services/api';
 
 const AuthContext = createContext(null);
 
@@ -19,11 +19,9 @@ export const AuthProvider = ({ children }) => {
     useEffect(() => {
         if (token) {
             // Verify token and get user data
-            axios.get('/api/me', {
-                headers: { Authorization: `Bearer ${token}` }
-            })
-                .then(response => {
-                    setUser(response.data.user);
+            authService.getMe()
+                .then(data => {
+                    setUser(data.user);
                     setLoading(false);
                 })
                 .catch(() => {
@@ -37,8 +35,8 @@ export const AuthProvider = ({ children }) => {
     }, [token]);
 
     const login = async (email, password) => {
-        const response = await axios.post('/api/login', { email, password });
-        const { token, user } = response.data;
+        const data = await authService.login(email, password);
+        const { token, user } = data;
         localStorage.setItem('token', token);
         setToken(token);
         setUser(user);
@@ -46,17 +44,15 @@ export const AuthProvider = ({ children }) => {
     };
 
     const signup = async (name, email, password, age) => {
-        const response = await axios.post('/api/signup', { name, email, password, age });
-        const { token, user } = response.data;
-        localStorage.setItem('token', token);
-        setToken(token);
-        setUser(user);
-        return user;
+        const data = await authService.signup(name, email, password, age);
+        // Do not log the user in immediately; they must verify email first.
+        // The API now returns a message and dev_verify_link instead of a token.
+        return data;
     };
 
     const anonymousLogin = async () => {
-        const response = await axios.post('/api/anonymous-login');
-        const { token, user } = response.data;
+        const data = await authService.anonymousLogin();
+        const { token, user } = data;
         localStorage.setItem('token', token);
         setToken(token);
         setUser(user);

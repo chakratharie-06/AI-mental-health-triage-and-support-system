@@ -1,5 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
 import Navbar from '../components/Navbar';
+import MemoryGame from '../components/MemoryGame';
+import BubblePop from '../components/BubblePop';
+import ZenRake from '../components/ZenRake';
+import StarMap from '../components/StarMap';
+import ColorRipple from '../components/ColorRipple';
+import LotusPond from '../components/LotusPond';
 
 /* ─── Audio helpers ─────────────────────────────────────────── */
 let _AC = null;
@@ -331,10 +337,20 @@ function BreathingExercise() {
 }
 
 /* ─── Main component ─────────────────────────────────────────── */
+const GAMES_LIST = [
+    { id: 'memory', title: 'Memory Match', desc: 'Gentle matching puzzle', icon: '🧩', bg: 'linear-gradient(135deg,#f08060,#e04040)', shadow: 'rgba(240,128,96,.3)' },
+    { id: 'bubble', title: 'Bubble Wrap', desc: 'Endless virtual popping', icon: '🫧', bg: 'linear-gradient(135deg,#5b9cf6,#3a75e8)', shadow: 'rgba(91,156,246,.3)' },
+    { id: 'zenrake', title: 'Zen Garden', desc: 'Draw mindful patterns', icon: '🏜️', bg: 'linear-gradient(135deg,#eab308,#ca8a04)', shadow: 'rgba(234,179,8,.3)' },
+    { id: 'starmap', title: 'Night Sky', desc: 'Place gentle stars', icon: '✨', bg: 'linear-gradient(135deg,#3b82f6,#1e3a8a)', shadow: 'rgba(59,130,246,.3)' },
+    { id: 'ripple', title: 'Water Ripples', desc: 'Create soothing ripples', icon: '💧', bg: 'linear-gradient(135deg,#c084fc,#818cf8)', shadow: 'rgba(192,132,252,.3)' },
+    { id: 'lotus', title: 'Peaceful Pond', desc: 'Add lotus flowers to water', icon: '🪷', bg: 'linear-gradient(135deg,#34d399,#059669)', shadow: 'rgba(52,211,153,.3)' },
+];
+
 export default function RelaxPage() {
     const [playingIds, setPlayingIds] = useState({});   // id → true/false
     const [vols, setVols] = useState({ ocean: .7, rain: .7, forest: .7, medi: .7 });
     const [toast, setToast] = useState({ msg: '', show: false });
+    const [activeGame, setActiveGame] = useState(null);
     const playingRef = useRef({});   // stores live audio handle objects
     const toastTRef = useRef(null);
 
@@ -468,6 +484,58 @@ export default function RelaxPage() {
 
                 {/* Breathing Exercise */}
                 <BreathingExercise />
+                
+                {/* Mind Relaxing Games Section */}
+                {activeGame === null ? (
+                    <div style={{ maxWidth: 1000, margin: '0 auto 36px', padding: '0 40px' }}>
+                        <div style={{ marginBottom: 20 }}>
+                            <h2 style={{ fontFamily: "'DM Serif Display',serif", fontSize: '1.4rem', color: '#1a1c2e', marginBottom: 4 }}>
+                                Mini Games
+                            </h2>
+                            <p style={{ fontSize: '.86rem', color: '#5a5f7a', fontWeight: 300, margin: 0 }}>
+                                Gentle interactive elements to give your mind a break. Click a game to play.
+                            </p>
+                        </div>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 20 }}>
+                            {GAMES_LIST.map(g => (
+                                <div key={g.id} className="relax-card" onClick={() => setActiveGame(g.id)} style={{
+                                    borderRadius: 22, padding: '24px', background: 'rgba(255,255,255,0.7)', cursor: 'pointer',
+                                    display: 'flex', alignItems: 'center', gap: 16, border: '1.5px solid rgba(255,255,255,0.9)',
+                                    backdropFilter: 'blur(12px)', boxShadow: '0 4px 20px rgba(0,0,0,.05)'
+                                }}>
+                                    <div style={{
+                                        width: 50, height: 50, borderRadius: 14, display: 'flex', alignItems: 'center', flexShrink: 0,
+                                        justifyContent: 'center', fontSize: 22, background: g.bg, boxShadow: `0 4px 14px ${g.shadow}`
+                                    }}>{g.icon}</div>
+                                    <div>
+                                        <h4 style={{ fontFamily: "'DM Serif Display',serif", fontSize: '1.1rem', margin: '0 0 4px 0', color: '#1a1c2e' }}>{g.title}</h4>
+                                        <p style={{ margin: 0, fontSize: '0.85rem', color: '#5a5f7a' }}>{g.desc}</p>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                ) : (
+                    <div style={{ position: 'relative', width: '100%', maxWidth: 1000, margin: '0 auto 36px' }}>
+                        <div style={{ padding: '0 40px', display: 'flex', justifyContent: 'flex-end', marginBottom: 12 }}>
+                            <button 
+                                onClick={() => setActiveGame(null)} 
+                                style={{ 
+                                    padding: '8px 20px', borderRadius: 50, border: 'none', background: 'rgba(26,28,46,.08)', 
+                                    cursor: 'pointer', fontFamily: "'Plus Jakarta Sans',sans-serif", fontWeight: 600, 
+                                    fontSize: '.85rem', color: '#1a1c2e', transition: 'background .2s'
+                                }}>
+                                ✕ Close Game
+                            </button>
+                        </div>
+                        {activeGame === 'memory' && <MemoryGame />}
+                        {activeGame === 'bubble' && <BubblePop />}
+                        {activeGame === 'zenrake' && <ZenRake />}
+                        {activeGame === 'starmap' && <StarMap />}
+                        {activeGame === 'ripple' && <ColorRipple />}
+                        {activeGame === 'lotus' && <LotusPond />}
+                    </div>
+                )}
 
                 {/* Responsive grid on mobile */}
                 <style>{`@media(max-width:640px){.relax-grid{grid-template-columns:1fr !important;padding:16px 20px !important;}}`}</style>

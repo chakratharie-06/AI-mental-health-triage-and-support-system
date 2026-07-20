@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Phone, MapPin, Clock, Globe, Heart, User, Building2, Wind, BookOpen, BarChart3, ArrowRight, AlertTriangle, ExternalLink } from 'lucide-react';
 import { motion } from 'framer-motion';
-import axios from 'axios';
+import { analyticsService } from '../services/api';
 import Navbar from '../components/Navbar';
 
 // ─── Data ────────────────────────────────────────────────────────────────────
@@ -171,11 +171,8 @@ const ResourcesPage = () => {
     useEffect(() => {
         const fetchStatus = async () => {
             try {
-                const token = localStorage.getItem('token');
-                const res = await axios.get('http://localhost:5000/api/user-distress-status', {
-                    headers: { Authorization: `Bearer ${token}` }
-                });
-                setDistressStatus(res.data);
+                const data = await analyticsService.getDistressStatus();
+                setDistressStatus(data);
             } catch (err) {
                 console.error('Could not load distress status:', err);
             } finally {
