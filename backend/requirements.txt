@@ -6,3 +6,4 @@ python-dotenv
 pyjwt
 gunicorn
 psycopg2-binary
+requests
