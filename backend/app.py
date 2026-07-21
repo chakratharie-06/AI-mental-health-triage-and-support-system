@@ -14,7 +14,15 @@ from openrouter_engine import generate_response as ai_generate_response
 load_dotenv()
 
 app = Flask(__name__)
-CORS(app)
+
+# Allow all origins in production (Vercel frontend → Render backend)
+CORS(app, resources={
+    r"/api/*": {
+        "origins": "*",
+        "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+        "allow_headers": ["Content-Type", "Authorization"]
+    }
+})
 
 # Database Configuration
 # Locally: SQLite. In production (Render/Railway): set DATABASE_URL env var to PostgreSQL URI.
