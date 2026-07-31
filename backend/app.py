@@ -185,7 +185,8 @@ def signup():
     db.session.add(user)
     db.session.commit()
     
-    dev_verify_link = f"http://localhost:5173/verify-email?token={user.verification_token}"
+    frontend_url = os.getenv('FRONTEND_URL', 'http://localhost:5173')
+    dev_verify_link = f"{frontend_url}/verify-email?token={user.verification_token}"
     
     # Do NOT return a JWT token, they must verify first
     return jsonify({
@@ -238,7 +239,8 @@ def forgot_password():
     db.session.commit()
     
     # In a real app, send email here. For dev, return it in the response so the frontend can display it.
-    reset_link = f"http://localhost:5173/reset-password?token={token}"
+    frontend_url = os.getenv('FRONTEND_URL', 'http://localhost:5173')
+    reset_link = f"{frontend_url}/reset-password?token={token}"
     
     return jsonify({
         'message': 'Password reset token generated (simulated email sent)',
