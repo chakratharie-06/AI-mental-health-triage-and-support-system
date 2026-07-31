@@ -1,6 +1,6 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { useAuth } from './context/AuthContext';
-import { useEffect } from 'react';
+import { useEffect, lazy, Suspense } from 'react';
 
 // Theme Manager - Mounts CSS classes heavily changing UI based on Age
 const ThemeManager = () => {
@@ -25,26 +25,41 @@ const ThemeManager = () => {
     return null;
 };
 
-// Pages
-import LandingPage from './pages/LandingPage';
-import SignIn from './pages/SignIn';
-import SignUp from './pages/SignUp';
-import ForgotPassword from './pages/ForgotPassword';
-import ResetPassword from './pages/ResetPassword';
-import VerifyEmail from './pages/VerifyEmail';
-import AgeGate from './pages/AgeGate';
-import AgeSelection from './pages/AgeSelection';
-import DashboardPage from './pages/DashboardPage';
-import ChatPage from './pages/ChatPage';
-import MoodTrackingPage from './pages/MoodTrackingPage';
-import JournalPage from './pages/JournalPage';
-import RelaxPage from './pages/RelaxPage';
-import ProfilePage from './pages/ProfilePage';
-import AssessmentPage from './pages/AssessmentPage';
-import AnalyticsPage from './pages/AnalyticsPage';
-import AdminDashboard from './pages/AdminDashboard';
-import ResourcesPage from './pages/ResourcesPage';
+// Pages — lazy loaded for code splitting (each page = its own JS chunk)
+const LandingPage     = lazy(() => import('./pages/LandingPage'));
+const SignIn          = lazy(() => import('./pages/SignIn'));
+const SignUp          = lazy(() => import('./pages/SignUp'));
+const ForgotPassword  = lazy(() => import('./pages/ForgotPassword'));
+const ResetPassword   = lazy(() => import('./pages/ResetPassword'));
+const VerifyEmail     = lazy(() => import('./pages/VerifyEmail'));
+const AgeGate         = lazy(() => import('./pages/AgeGate'));
+const AgeSelection    = lazy(() => import('./pages/AgeSelection'));
+const DashboardPage   = lazy(() => import('./pages/DashboardPage'));
+const ChatPage        = lazy(() => import('./pages/ChatPage'));
+const MoodTrackingPage = lazy(() => import('./pages/MoodTrackingPage'));
+const JournalPage     = lazy(() => import('./pages/JournalPage'));
+const RelaxPage       = lazy(() => import('./pages/RelaxPage'));
+const ProfilePage     = lazy(() => import('./pages/ProfilePage'));
+const AssessmentPage  = lazy(() => import('./pages/AssessmentPage'));
+const AnalyticsPage   = lazy(() => import('./pages/AnalyticsPage'));
+const AdminDashboard  = lazy(() => import('./pages/AdminDashboard'));
+const ResourcesPage   = lazy(() => import('./pages/ResourcesPage'));
 import TimeTracker from './components/TimeTracker';
+
+// Loading fallback shown between route transitions
+const PageLoader = () => (
+    <div style={{
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        height: '100vh', background: 'var(--bg-primary, #0f172a)'
+    }}>
+        <div style={{
+            width: 40, height: 40, border: '3px solid rgba(99,102,241,0.3)',
+            borderTopColor: '#6366f1', borderRadius: '50%',
+            animation: 'spin 0.8s linear infinite'
+        }} />
+        <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+    </div>
+);
 
 // Protected Route Component
 const ProtectedRoute = ({ children }) => {
@@ -64,8 +79,9 @@ function App() {
         <Router>
             <ThemeManager />
             <TimeTracker />
-            <Routes>
-                {/* Public Routes */}
+            <Suspense fallback={<PageLoader />}>
+                <Routes>
+                    {/* Public Routes */}
                 <Route path="/" element={<LandingPage />} />
                 <Route path="/age-gate" element={<AgeGate />} />
                 <Route 
@@ -167,6 +183,7 @@ function App() {
                 {/* Fallback */}
                 <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
+            </Suspense>
         </Router>
     );
 }
