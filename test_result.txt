@@ -1,0 +1,4 @@
+[SUCCESS] Response received from Groq:
+--------------------------------------------------
+I can sense some worry in your words. Take a slow breath — you're safe right now. What's been on your mind?
+--------------------------------------------------
