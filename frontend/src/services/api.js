@@ -9,9 +9,17 @@
 
 import axios from 'axios';
 
+// ── Base URL Resolver ────────────────────────────────────────────────────────
+const getBaseURL = () => {
+    const raw = import.meta.env.VITE_API_URL;
+    if (!raw || !raw.trim()) return '/api';
+    const trimmed = raw.trim().replace(/\/+$/, '');
+    return trimmed.endsWith('/api') ? trimmed : `${trimmed}/api`;
+};
+
 // ── Core instance ─────────────────────────────────────────────────────────────
 const api = axios.create({
-    baseURL: import.meta.env.VITE_API_URL || '/api', // Use env var for prod, fallback to local proxy
+    baseURL: getBaseURL(),
     timeout: 30000,           // 30s — AI responses can be slow
     headers: {
         'Content-Type': 'application/json',

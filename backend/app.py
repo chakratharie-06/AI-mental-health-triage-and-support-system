@@ -17,7 +17,7 @@ app = Flask(__name__)
 
 # Allow all origins in production (Vercel frontend → Render backend)
 CORS(app, resources={
-    r"/api/*": {
+    r"/*": {
         "origins": "*",
         "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
         "allow_headers": ["Content-Type", "Authorization"]
@@ -158,6 +158,19 @@ Before responding, verify:
 
 **Opening Message**: "Hi, I'm Care Nest 💙 I'm here to listen and support you. What's on your mind?"
 """
+
+# ============ HEALTH & SYSTEM ROUTES ============
+
+@app.route('/', methods=['GET'])
+@app.route('/health', methods=['GET'])
+@app.route('/api/health', methods=['GET'])
+def health_check():
+    """Health check endpoint for deployment monitoring (Render, Railway, etc.)"""
+    return jsonify({
+        'status': 'healthy',
+        'service': 'Care Nest API',
+        'timestamp': datetime.utcnow().isoformat()
+    }), 200
 
 # ============ AUTH ROUTES ============
 
@@ -1167,4 +1180,6 @@ cleanup_thread.start()
 if __name__ == '__main__':
     with app.app_context():
         db.create_all()
-    app.run(debug=True, port=5000)
+    port = int(os.getenv('PORT', 5000))
+    debug = os.getenv('FLASK_DEBUG', 'false').lower() in ('true', '1', 't')
+    app.run(host='0.0.0.0', port=port, debug=debug)
